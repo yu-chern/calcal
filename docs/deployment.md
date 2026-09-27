@@ -7,10 +7,25 @@
 - 账户已有 Zero Trust，团队域名为 `langload.cloudflareaccess.com`；保留其既有设置与其他应用。
 - 已创建本项目专用 Tunnel：`calcal-finanio`，UUID 为 `c5295efd-21f9-4f3b-9005-da25886e082a`。
 - 本机配置 `deploy/cloudflared.local.yml` 已通过 ingress 校验，凭据位于 `deploy/runtime/tunnel.json`。两者均被 Git 忽略。
-- **尚未上线**：还需要唯一获准登录邮箱、专用 Access 应用、域名 DNS 路由、生产进程及外网登录验收。
-- 本次本机复查：Tunnel 配置与凭据文件存在，生产 `.env` 缺失；已新增 `scripts/service.sh` 统一管理命令。未修改 Cloudflare 资源，也未完成公网登录验收。
-- 脚本本地验收已覆盖四个命令、重复启动/停止、启动会话退出后的后台运行、端口释放、单组件退出后的联动停止，以及通过 Vite 代理提交中文 prompt。生产配置缺失时已验证拒绝启动；生产整套启动和手机外网登录仍待配置完成后验收。
+- **公网 HTTPS 入口及认证拦截已生效，手机登录后发送验收待完成。** 未登录访问 `https://finanio.app` 已实际出现 “Log in to Calcal” 邮箱验证码页面。
+- 已创建专用 Access 应用 `Calcal`，ID `cfb7ef9a-235c-483d-9cd7-31235c46b085`，保护 `finanio.app` 全部路径；唯一 Allow 策略 `Calcal owner only`，ID `f552193b-e9d4-4b20-b9bc-3c0bcb5aeda0`，精确允许用户指定邮箱。应用会话 24 小时，使用 One-time PIN，启用 HttpOnly Cookie。未更改其他项目应用与策略。
+- 已新增根域名代理 CNAME，指向本项目 Tunnel；部署前确认域名无其他 DNS 记录。未添加 `www` 路由。
+- 已创建本机 `.env`，权限 `600`，采用实际 Access AUD 和指定邮箱，Git 忽略；不在文档记录凭据或会话令牌。
+- 已通过 `scripts/service.sh start prod` 启动 Rust 与 cloudflared，开发模式已停止。Tunnel 查询显示 4 条边缘连接（Düsseldorf / Frankfurt）；状态是当次查询结果，电脑休眠、断网或进程停止后会变化。
+- 脚本本地验收覆盖四个命令、重复启动/停止、启动会话退出后的后台运行、端口释放、单组件退出后的联动停止，以及通过 Vite 代理提交中文 prompt。本次部署运行完整 `scripts/check.sh` 和生产构建，均通过。
 - 现有 `cloudflared` 证书可管理 Tunnel，但通过 API 读取 `finanio.app` 和账户 Access 配置的权限不完整；控制台会话可以访问这些配置。不要把 API 空结果当作账户没有资源。
+
+### 本次公网验证结果
+
+| 检查 | 实测结果 |
+| --- | --- |
+| 公网 HTTPS 首页 | TLS 验证成功；未登录返回 302 到团队 Access 登录页，浏览器显示 Calcal 登录表单 |
+| 公网 `GET /api/session`、`POST /api/messages` | 未登录均返回 302 到 Access；不会到达打印业务 |
+| 本机生产首页，无 JWT | 401 |
+| 本机生产 API，仅伪造邮箱标头 | 401 |
+| 本机生产发送 API，伪造 JWT | 401 |
+| 获准邮箱经手机蜂窝网络登录并发送 | 待用户完成下方测试并核对日志 |
+| 未获准邮箱真实登录 | 待手机验收；JWT 单元测试已覆盖其他邮箱拒绝，但不替代真实登录测试 |
 
 ## 单用户 Access 应用
 
@@ -62,6 +77,17 @@ tail -f deploy/runtime/service/prod.log
 Tunnel 原理与配置参考 [Cloudflare 官方文档](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/)。仅公开此 HTTP 服务，不公开 Vite、SSH 或其他本机端口。
 
 ## 手机验收
+
+当前服务已启动，可以直接测试：
+
+1. 电脑保持联网与唤醒。在手机关闭 Wi-Fi、开启 4G/5G，使用 Safari 或 Chrome 打开 `https://finanio.app`（不加 `www` 或端口）。
+2. 首次访问应出现 **Log in to Calcal**。输入唯一获准邮箱，点 **Send login code**，到邮箱取码并在网页输入。登录跳转到 `langload.cloudflareaccess.com` 是已有 Cloudflare 团队的正常认证流程；成功后回到 `finanio.app`。
+3. 进入聊天页后发送 `手机外网验收-927`，应显示 `消息已在 Rust 后端打印。`。电脑可执行 `tail -f deploy/runtime/service/prod.log` 核对相同原文。此版本只打印，不产生模型回答。
+4. 刷新页面，确认当前手机浏览器的对话仍保留。发送前输入一段草稿再刷新，草稿也应保留；电脑与手机的历史不会同步。
+5. 打开独立无痕窗口，直接访问 `https://finanio.app/api/session`，未登录时仍应进入验证，不能直接读到 JSON。使用你自己控制的另一个、未获准邮箱尝试登录，不应进入网站；验证码界面可能统一提示已发送，不代表获得了访问权。
+6. 若出现问题，记录时间、停在哪一步和屏幕提示；不要分享验证码或会话令牌。只有成功登录、发送确认和电脑日志一致，才算完成手机端到端验收。
+
+日常启动与重启使用 `./scripts/service.sh start prod` 和 `./scripts/service.sh restart prod`；只执行默认 `start` 会启动本地开发模式，不能提供上述公网访问。
 
 完成上面的 Access、`.env`、启动和域名路由步骤后，手机无需加入电脑所在的 Wi-Fi，也无需安装 VPN。电脑必须联网、保持唤醒，Rust 和 Tunnel 必须都在运行；不要把手机浏览器指向 `127.0.0.1`，那是手机自身的地址。Tunnel 使用电脑主动发起的连接，正常情况下无需路由器端口映射。
 

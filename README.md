@@ -4,7 +4,7 @@
 
 **当前版本是 Print demo：发送文字 → Rust 原样 `println!` → 页面显示接收确认。没有 LLM、自动回复或 agent loop。** 不需要 API Key。
 
-目标入口：`https://finanio.app`。当前本地版本已可运行，公网部署尚未完成；已创建独立 Tunnel，正在等待确定唯一登录邮箱和配置 Access / DNS。实际进度见 [部署说明](docs/deployment.md)。
+公网入口：`https://finanio.app`。已配置专用 Cloudflare Access、DNS 与 Tunnel，并通过统一脚本启动生产服务；HTTPS 登录页和未登录 API 拦截已实测生效。仅允许用户指定的一个邮箱登录，手机登录后发送验收仍待完成。实际进度及手机测试步骤见 [部署说明](docs/deployment.md)。
 
 ## 快速开始
 
@@ -130,7 +130,7 @@ curl --fail-with-body http://127.0.0.1:3000/api/messages \
 
 生产模式由 Rust 同时提供 React 构建产物与 API，无需运行 Vite。每条生产管理命令都要带 `prod`；开发与生产模式共用 3000 端口，不能同时启动。生产日志在 `deploy/runtime/service/prod.log`，`status prod` 只报告本机进程状态，不代表 Cloudflare 已连通或登录验收通过。
 
-手机使用蜂窝网络，在浏览器打开 <https://finanio.app>，通过唯一获准邮箱登录后使用；不需要与电脑连接同一 Wi-Fi。当前仍缺 Access / DNS / `.env` 配置，不能把本地启动成功视为手机外网已可用。
+手机使用蜂窝网络，在浏览器打开 <https://finanio.app>，通过唯一获准邮箱的验证码登录后使用；不需要与电脑连接同一 Wi-Fi。Access / DNS / `.env` 已配置，公网登录入口已验证；手机端登录、发送确认和电脑日志核对仍需按 [手机验收步骤](docs/deployment.md#手机验收) 完成。
 
 用户通过 Codex Remote 操作开发电脑，在手机浏览器测试这个项目；此仓库不承担远程终端或桌面控制。
 
