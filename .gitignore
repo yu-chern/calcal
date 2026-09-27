@@ -1,1 +1,10 @@
 /target
+/web/node_modules/
+/web/dist/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+/deploy/*.local.*
+/deploy/runtime/

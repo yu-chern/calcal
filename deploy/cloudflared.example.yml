@@ -1,0 +1,7 @@
+# Copy to deploy/cloudflared.local.yml (gitignored) and replace placeholders.
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: /absolute/path/to/YOUR_TUNNEL_UUID.json
+ingress:
+  - hostname: finanio.app
+    service: http://127.0.0.1:3000
+  - service: http_status:404
