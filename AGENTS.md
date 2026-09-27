@@ -36,6 +36,8 @@ Calcal 是帮助用户理解 agent 工作机制的个人实验项目。React + T
 
 ```bash
 npm --prefix web ci
+./scripts/service.sh start   # 后台启动前后端；另有 stop / status / restart
+./scripts/service.sh start prod # 生产构建 + Rust + Tunnel；需先完成部署配置
 ./scripts/dev.sh             # http://127.0.0.1:5180；Ctrl+C 停止两个进程
 ./scripts/check.sh           # 完整 Rust / 前端检查
 ./scripts/build.sh           # 前端 + Rust release

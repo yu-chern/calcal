@@ -8,6 +8,8 @@
 - 已创建本项目专用 Tunnel：`calcal-finanio`，UUID 为 `c5295efd-21f9-4f3b-9005-da25886e082a`。
 - 本机配置 `deploy/cloudflared.local.yml` 已通过 ingress 校验，凭据位于 `deploy/runtime/tunnel.json`。两者均被 Git 忽略。
 - **尚未上线**：还需要唯一获准登录邮箱、专用 Access 应用、域名 DNS 路由、生产进程及外网登录验收。
+- 本次本机复查：Tunnel 配置与凭据文件存在，生产 `.env` 缺失；已新增 `scripts/service.sh` 统一管理命令。未修改 Cloudflare 资源，也未完成公网登录验收。
+- 脚本本地验收已覆盖四个命令、重复启动/停止、启动会话退出后的后台运行、端口释放、单组件退出后的联动停止，以及通过 Vite 代理提交中文 prompt。生产配置缺失时已验证拒绝启动；生产整套启动和手机外网登录仍待配置完成后验收。
 - 现有 `cloudflared` 证书可管理 Tunnel，但通过 API 读取 `finanio.app` 和账户 Access 配置的权限不完整；控制台会话可以访问这些配置。不要把 API 空结果当作账户没有资源。
 
 ## 单用户 Access 应用
@@ -26,18 +28,22 @@
 
 ```bash
 ./scripts/check.sh
-./scripts/build.sh
-./scripts/serve.sh
+./scripts/service.sh stop         # 若开发模式在运行，先释放 3000 端口
+./scripts/service.sh start prod   # 自动构建前端和 Rust，后台启动 Rust 与 Tunnel
+./scripts/service.sh status prod
+./scripts/service.sh restart prod # 停止整套服务、重新构建、重新启动
+./scripts/service.sh stop prod
 ```
 
-`serve.sh` 读取本机 `.env`，只允许 Cloudflare 模式。`.env` 是由 shell 读取的可信本地配置，不应放入不可信内容。默认服务监听 `127.0.0.1:3000`。另开一个终端启动 Tunnel：
+每条生产命令必须带 `prod`，省略时管理的是开发模式。`start prod` 先检查配置、端口及 ingress，再调用 `build.sh`、`serve.sh` 和 cloudflared。Rust 同时提供前端静态页面与 API，不启动 Vite。`serve.sh` 读取本机 `.env`，只允许 Cloudflare 模式。`.env` 是由 shell 读取的可信本地配置，不应放入不可信内容。统一脚本固定生产服务为 `127.0.0.1:3000`、来源为 `https://finanio.app`，与本项目 Tunnel 配置一致。
+
+查看日志：
 
 ```bash
-cloudflared tunnel --config deploy/cloudflared.local.yml ingress validate
-cloudflared tunnel --config deploy/cloudflared.local.yml run calcal-finanio
+tail -f deploy/runtime/service/prod.log
 ```
 
-首轮部署先用两个前台终端观察行为。控制台中的服务启动信息写 stderr，prompt 原文写 stdout。需要后台常驻时，使用独立的 macOS launchd 用户服务监督这两个进程，记录具体服务名与日志位置；不要依赖一个退出后会关闭的临时终端。当前尚未安装 launchd 服务。
+启动信息与 prompt 原文追加写入上述日志；日志与 PID 状态均被 Git 忽略。脚本在独立后台会话中监督本次启动的两个进程，终端关闭后继续运行，任一组件退出会停止另一组件。重复启动不会多开；不强行停止占用端口的其他进程。它不提供开机自启或崩溃自动重启，电脑重启后需手动启动；当前未安装 launchd 服务。`status prod` 与启动成功只确认本机进程及本地 HTTP 响应，Tunnel 连接、DNS 和 Access 必须另行验收。
 
 ## 域名路由
 
@@ -57,6 +63,10 @@ Tunnel 原理与配置参考 [Cloudflare 官方文档](https://developers.cloudf
 
 ## 手机验收
 
+完成上面的 Access、`.env`、启动和域名路由步骤后，手机无需加入电脑所在的 Wi-Fi，也无需安装 VPN。电脑必须联网、保持唤醒，Rust 和 Tunnel 必须都在运行；不要把手机浏览器指向 `127.0.0.1`，那是手机自身的地址。Tunnel 使用电脑主动发起的连接，正常情况下无需路由器端口映射。
+
+如果使用邮箱验证码，在 Cloudflare Zero Trust 的登录方式中启用 One-time PIN，并将它用于 Calcal 应用；Allow 策略仍只包含唯一邮箱。手机打开网址后输入该邮箱，从邮箱取验证码完成登录。配置参考 [Self-hosted 应用](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/self-hosted-public-app/) 与 [One-time PIN](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/one-time-pin/) 官方文档。
+
 - 蜂窝网络打开 `https://finanio.app`，未登录时进入 Access 登录界面。
 - 获准邮箱登录后可以提交 prompt，页面出现打印确认，电脑日志出现原文。
 - 未获准身份不能进入网站或直接调用 `/api/messages`。
@@ -68,6 +78,6 @@ Tunnel 原理与配置参考 [Cloudflare 官方文档](https://developers.cloudf
 
 ## 迭代与回退
 
-修改前端后运行 `npm --prefix web run build`；修改 Rust 后运行 `cargo build --release --locked` 并重启 `serve.sh`。域名和 Tunnel 可以保持原样。
+修改前端或 Rust 后运行 `./scripts/service.sh restart prod`，会重新构建并启动整套服务。域名和 Tunnel 配置可以保持原样。重建期间网站暂时不可用；如果构建失败，修复后再运行 `start prod`。
 
-回退时先停止本项目的 Tunnel 进程，使外网无法再到达本机；然后停止 Rust 服务。如需撤销域名入口，只删除这次新增的 `finanio.app` CNAME，保留其他 DNS 和账户设置。Access 策略可继续保留保护；确认不再使用后再删除本项目的应用或 Tunnel，不动其他项目。
+回退时运行 `./scripts/service.sh stop prod`，停止本脚本管理的 Tunnel 与 Rust。如需撤销域名入口，只删除这次新增的 `finanio.app` CNAME，保留其他 DNS 和账户设置。Access 策略可继续保留保护；确认不再使用后再删除本项目的应用或 Tunnel，不动其他项目。

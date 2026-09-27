@@ -12,10 +12,24 @@
 
 ```bash
 npm --prefix web ci
-./scripts/dev.sh
+./scripts/service.sh start
 ```
 
-打开 <http://127.0.0.1:5180>。Vite 自动更新前端，Rust 在 `127.0.0.1:3000` 接收 `/api` 请求。提交的 prompt 会出现在运行脚本的终端中。修改 Rust 后停止脚本并重新运行；Ctrl+C 同时停止两个开发进程。
+打开 <http://127.0.0.1:5180>。Vite 自动更新前端，Rust 在 `127.0.0.1:3000` 接收 `/api` 请求。服务在后台运行，关闭终端后继续运行。
+
+```bash
+./scripts/service.sh start    # 构建 Rust，启动前后端；重复执行不会多开
+./scripts/service.sh stop     # 同时停止前后端
+./scripts/service.sh status   # 查看运行状态和日志位置；未运行时退出码为 1
+./scripts/service.sh restart  # 同时停止、重新构建 Rust、启动前后端
+tail -f deploy/runtime/service/dev.log
+```
+
+默认模式为 `dev`，可以显式添加第二个参数 `dev`。日志包含发送的 prompt 原文，追加保存在 Git 忽略的 `deploy/runtime/service/dev.log`。首次缺少 Vite 依赖时自动运行 `npm ci`；依赖锁文件变更后请重新执行 `npm --prefix web ci`。可以用 `WEB_PORT=5181 ./scripts/service.sh start` 更改前端端口，后续重启时也需提供相同变量。
+
+脚本要求 Bash、curl、lsof 及上述构建工具（macOS 自带 Bash/curl/lsof）。它只停止自己管理的进程，端口被其他进程占用时会报错；若此前用 `dev.sh` 启动，请先在原终端 Ctrl+C。任一组件退出会联动停止整套服务。它不提供开机自启或崩溃自动重启；电脑重启后需要重新 `start`。
+
+也可继续使用 `./scripts/dev.sh` 在前台运行并查看 prompt，Ctrl+C 同时停止两个开发进程。
 
 开发脚本显式启用本地免登录模式。请使用 `127.0.0.1:5180`，因为写入接口只接受配置的精确来源。代码默认使用 Cloudflare 身份校验，缺少配置会拒绝启动。
 
@@ -54,7 +68,7 @@ calcal/
 │   ├── api.rs                 # 输入、来源与本地访问边界
 │   ├── access.rs              # 有效/伪造/过期/其他用户 JWT
 │   └── fixtures/              # 仅用于离线测试的公开测试密钥
-├── scripts/                   # dev / check / build / serve
+├── scripts/                   # service（统一管理）/ dev / check / build / serve
 ├── deploy/                    # Tunnel 配置示例；本机配置和凭据已忽略
 └── docs/deployment.md          # Cloudflare 配置、启动、验证与回退
 ```
@@ -103,6 +117,20 @@ curl --fail-with-body http://127.0.0.1:3000/api/messages \
 ## 部署与后续开发
 
 部署采用 `finanio.app → Cloudflare Access → Tunnel → 本机 Rust → React 静态页面 / API`。电脑和服务需要保持运行，休眠或断网时无法从手机访问。具体步骤及状态见 [部署说明](docs/deployment.md)。
+
+完成 Access、`.env` 和 DNS 配置后，用以下命令管理整套公网服务：
+
+```bash
+./scripts/service.sh stop          # 先停开发模式，释放 3000 端口
+./scripts/service.sh start prod    # 构建前端与 Rust，启动 Rust + Tunnel
+./scripts/service.sh status prod
+./scripts/service.sh restart prod  # 更新前后端构建并重启整套服务
+./scripts/service.sh stop prod
+```
+
+生产模式由 Rust 同时提供 React 构建产物与 API，无需运行 Vite。每条生产管理命令都要带 `prod`；开发与生产模式共用 3000 端口，不能同时启动。生产日志在 `deploy/runtime/service/prod.log`，`status prod` 只报告本机进程状态，不代表 Cloudflare 已连通或登录验收通过。
+
+手机使用蜂窝网络，在浏览器打开 <https://finanio.app>，通过唯一获准邮箱登录后使用；不需要与电脑连接同一 Wi-Fi。当前仍缺 Access / DNS / `.env` 配置，不能把本地启动成功视为手机外网已可用。
 
 用户通过 Codex Remote 操作开发电脑，在手机浏览器测试这个项目；此仓库不承担远程终端或桌面控制。
 
