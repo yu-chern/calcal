@@ -2,20 +2,45 @@
 
 ## Agent 版本状态（2026-09-28）
 
-本轮实现了 Agent Loop、OpenAI、Calculator/Calendar、Postgres JSONB 与 UI 活动记录，但**未重启或部署公网服务，未修改 DNS、Access、Tunnel**。下面的2026-09-27验收记录仅适用于旧 Print 版本。
+**已将提交 `8604475` 推送至 `origin/master`，并通过 `scripts/service.sh restart prod` 部署到 https://finanio.app。** 新版包括 Agent Loop、OpenAI、Calculator/Calendar、Postgres JSONB 与 UI 活动记录。下文2026-09-27记录属于旧 Print 版本。
 
-默认模型现为 `gpt-6-luna`，`reasoning_effort = "medium"`，通过 Responses API 的 `reasoning.effort` 显式传递。本地3002端口已用该配置实际完成 Calendar → Calculator → 最终回答（14天、1680元）；Rust检查和隔离数据库集成测试通过。此验证不代表公网已切换模型。
+生产模型为 `gpt-6-luna`，`reasoning_effort = "medium"`，通过 Responses API 的 `reasoning.effort` 显式传递。已从公网发送组合问题并完成 Calendar → Calculator → 最终回答；数据库中的此次运行快照确认模型和推理级别，终止原因为 completed。
 
-新版本上线前：
+### 实际部署变更与检查
 
-1. 配置服务端 OPENAI_API_KEY 和 DATABASE_URL；系统参数位于 system_config/config.toml。可用 scripts/postgres.sh start 启动项目独立本机数据库，凭据在 Git 忽略的 deploy/runtime/postgres.env。数据库不自动开机启动。
-2. 运行 scripts/check.sh 和 scripts/test-db.sh；备份目标数据库。应用启动会应用 migrations/0001_agent.sql，在专用数据库中创建三张业务表。现有浏览器历史不自动迁移或删除。
-3. 停止连接同一数据库的本地预览实例；本版每个数据库只允许一个 Agent 服务实例。再通过 scripts/service.sh restart prod 构建、启动新版本。
-4. 重新验收获准身份、未获准身份、未登录页面与直接 API。发送日期与金额组合问题，确认真实工具步骤、最终回答、刷新后的数据库记录和跨设备历史。测试发送中刷新、失败草稿保留和登录过期。
+- 更新 Rust release 和前端构建产物，重启生产 Rust 与 cloudflared；Rust 仅监听 `127.0.0.1:3000`。Tunnel 查询显示4条边缘连接，指向同一源站。
+- 复用现有 DNS、Access 与专用 Tunnel，未更改这些配置。控制台确认 `finanio.app` 为代理 Tunnel 记录；Calcal 绑定该域名，`Calcal owner only` 策略为 Allow，唯一 Include 为指定完整邮箱。
+- 服务端从 `.env` 读取 OpenAI 和 Cloudflare 配置，从被 Git 忽略的 `deploy/runtime/postgres.env` 读取数据库连接。项目 Postgres 运行于 `127.0.0.1:55432`，无其他预览服务连接同一业务库。
+- 部署前备份位于本机 `deploy/runtime/backups/20260928-223437/`：`calcal.dump` 为数据库归档，已检查归档目录；`pre-agent-source.tar.gz` 为旧提交 `1b2d456` 的源码。备份没有进入 Git。
+- `scripts/check.sh` 通过 Rust fmt/check/test/clippy、13项 Rust 单元/API测试及4项前端交互测试、前端格式/lint/类型检查/构建。`scripts/test-db.sh` 隔离数据库集成测试通过，生产 release 构建通过。`nom 1.2.4` 仍有编译器未来兼容性警告，当前构建成功。
 
-本地独立测试库已验证循环、持久化及失败边界；本地真实模型调用与浏览器验证记录见本次开发交付。它们不替代新的公网验收。
+### Agent 公网实测结果
 
-回退：先停止新版本服务，恢复旧代码与其配套前端构建再启动。保留 Postgres 数据及迁移记录，不删除新表；旧 Print 版本不会读取这些历史。若需恢复数据库，使用部署前备份并单独确认恢复范围。不要撤销其他项目资源。
+| 检查 | 实测结果 |
+| --- | --- |
+| 未登录公网首页、`GET /api/session`、`GET /api/conversations`、`POST /api/messages` | curl 验证 TLS 成功，均返回302到团队 Access 登录页 |
+| 无令牌访问本机生产首页和 session API | 401 |
+| 本机 API 仅伪造邮箱标头或提供伪造 JWT | 401 |
+| 获准身份的现有浏览器会话访问公网 | 可进入新版聊天界面并发送；本次未重新执行邮箱验证码登录 |
+| 日期与计算组合问题 | 2026-10-01到2026-10-15相隔14天，每天120元，最终回答1680元 |
+| UI 活动与完成状态 | 运行中显示“正在分析问题”，完成后可展开7条记录，包括“正在查询日期”和“正在计算” |
+| Postgres 运行及消息记录 | completed；3次模型响应、2次工具调用及结果（calendar、calculator），用户/助手消息与7条活动已保存 |
+| 刷新公网页面 | 从服务端恢复相同对话及执行记录 |
+| 手机蜂窝网络、跨设备历史、登录过期 | 待用户正式测试 |
+| 未获准邮箱真实登录 | 待用户使用自己控制的其他邮箱验收；代码拒绝测试与策略检查不替代真实身份测试 |
+
+上述未登录 HTTP 结果以 curl 为准；Python urllib 的同类请求返回403，未作为302验收依据。浏览器直接打开 session JSON 页被浏览器工具阻止；获准身份的 API 可用性通过聊天页发送、轮询与刷新取回历史确认。
+
+### 用户正式测试
+
+1. 电脑保持联网、唤醒，Postgres、Rust 与 Tunnel 保持运行。在手机使用4G/5G打开 https://finanio.app；若无有效会话，用唯一获准邮箱完成验证码登录。
+2. 发送“请查询2026-10-01到2026-10-15相隔多少天，再计算每天120元的总金额”。应得到14天、1680元，并能展开真实执行记录。界面接收请求不等于模型已完成回答。
+3. 刷新并在另一设备用同一身份登录，确认数据库历史恢复。再检查发送中刷新、草稿刷新保留、网络失败提示和登录过期处理。
+4. 无痕窗口直接访问 `/api/session`，应要求登录。使用自己控制的未获准邮箱尝试登录，应无法进入聊天页或读取 API 数据；不要分享验证码或令牌。
+
+重启电脑后先运行 `scripts/postgres.sh start`，再运行 `scripts/service.sh start prod`。目前没有开机自启、崩溃自动重启或持续可用性保障；电脑休眠、断网或进程退出会影响公网访问。
+
+回退：先停止生产服务，恢复 `1b2d456`（或上述源码归档）及其配套前端构建后重新启动，保留本机 `.env` 与 Tunnel 凭据。保留 Postgres 数据及迁移记录，不删除新表；旧 Print 版本不会读取这些历史。若需恢复数据库，使用部署前备份并单独确认恢复范围。不要撤销其他项目资源。
 
 ## Print 版本历史进度（2026-09-27）
 
