@@ -1,0 +1,26 @@
+[model]
+provider = "openai"
+model = "gpt-6-luna"
+reasoning_effort = "medium"
+base_url = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+request_timeout_seconds = 30
+max_output_tokens = 4096
+
+[agent]
+system_prompt_file = "system_prompt.md"
+max_steps = 8
+max_tool_calls = 12
+run_timeout_seconds = 90
+tool_timeout_seconds = 2
+max_concurrent_runs = 2
+history_turns = 12
+max_context_chars = 48000
+
+[database]
+url_env = "DATABASE_URL"
+
+[tools]
+timezone = "Europe/Berlin"
+# Order does not determine execution order. The model selects tools as needed.
+definitions = ["tools/calculator.v1.json", "tools/calendar.v1.json"]

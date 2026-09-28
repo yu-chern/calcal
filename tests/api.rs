@@ -19,6 +19,7 @@ fn app() -> axum::Router {
             auth: AuthConfig::Local,
         },
         Access::Local,
+        None,
     )
 }
 
@@ -36,18 +37,18 @@ async fn post(body: String, origin: Option<&str>) -> axum::response::Response {
 }
 
 #[tokio::test]
-async fn accepts_unicode_and_multiline_prompts() {
+async fn valid_prompts_require_a_ready_agent() {
     let response = post(
-        serde_json::json!({"prompt":"  你好 🦀\nRust!  "}).to_string(),
+        serde_json::json!({"prompt":"  你好 🦀\nRust!  ","conversation_id":uuid::Uuid::new_v4(),"request_id":uuid::Uuid::new_v4()}).to_string(),
         Some("http://127.0.0.1:5173"),
     )
     .await;
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(response.headers()["cache-control"], "no-store");
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     assert_eq!(
-        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["status"],
-        "printed"
+        serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["error"],
+        "Agent 或数据库尚未就绪，请检查服务配置。"
     );
 }
 
@@ -56,7 +57,7 @@ async fn rejects_empty_oversized_and_malformed_prompts() {
     for prompt in [" \n\t".into(), "你".repeat(4001)] {
         assert_eq!(
             post(
-                serde_json::json!({"prompt":prompt}).to_string(),
+                serde_json::json!({"prompt":prompt,"conversation_id":uuid::Uuid::new_v4(),"request_id":uuid::Uuid::new_v4()}).to_string(),
                 Some("http://127.0.0.1:5173")
             )
             .await
@@ -110,7 +111,7 @@ async fn local_mode_rejects_public_hosts_and_cloudflare_traffic() {
 }
 
 #[tokio::test]
-async fn session_exposes_only_demo_capabilities() {
+async fn session_exposes_agent_readiness() {
     let response = app()
         .oneshot(
             Request::get("/api/session")
@@ -124,6 +125,6 @@ async fn session_exposes_only_demo_capabilities() {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&bytes).unwrap()["mode"],
-        "print"
+        "agent"
     );
 }

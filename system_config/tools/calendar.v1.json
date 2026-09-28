@@ -1,0 +1,20 @@
+{
+  "name": "calendar",
+  "version": "1",
+  "binding": "calendar.v1",
+  "description": "查询公历日期与星期，或计算日期。today使用服务器参考时间和配置时区；inspect使用date；diff使用start和end，返回end-start的天数；add使用date、amount和unit。不适用的字段必须为null。日期格式YYYY-MM-DD。月份/年份偏移到不存在的日期会报错，不自动截断。",
+  "activity": "正在查询日期",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "operation": { "type": "string", "enum": ["today", "inspect", "diff", "add"] },
+      "date": { "type": ["string", "null"] },
+      "start": { "type": ["string", "null"] },
+      "end": { "type": ["string", "null"] },
+      "amount": { "type": ["integer", "null"], "minimum": -100000, "maximum": 100000 },
+      "unit": { "type": ["string", "null"], "enum": ["days", "weeks", "months", "years", null] }
+    },
+    "required": ["operation", "date", "start", "end", "amount", "unit"],
+    "additionalProperties": false
+  }
+}

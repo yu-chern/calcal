@@ -5,10 +5,14 @@ export default function ConversationHistory({
   conversations,
   activeId,
   onSelect,
+  moreHistory,
+  onLoadMore,
 }: {
   conversations: Conversation[]
   activeId: string
   onSelect: (id: string) => void
+  moreHistory: boolean
+  onLoadMore: () => void
 }) {
   const drawer = useRef<HTMLDialogElement>(null)
 
@@ -70,6 +74,11 @@ export default function ConversationHistory({
                   </li>
                 ))}
             </ul>
+            {moreHistory && (
+              <button className="text-button" onClick={onLoadMore}>
+                加载更多对话
+              </button>
+            )}
           </nav>
         </div>
       </dialog>

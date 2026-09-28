@@ -155,7 +155,7 @@ mod tests {
             client: reqwest::Client::new(),
             keys: Mutex::new((Instant::now(), JwkSet { keys: vec![] })),
         }));
-        let app = crate::http::router(config, access);
+        let app = crate::http::router(config, access, None);
         for path in ["/", "/favicon.svg", "/api/session", "/api/messages"] {
             for token in [None, Some("forged-token")] {
                 let mut request = Request::builder()

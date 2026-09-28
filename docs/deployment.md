@@ -1,6 +1,23 @@
 # Cloudflare 部署
 
-## 当前进度（2026-09-27）
+## Agent 版本状态（2026-09-28）
+
+本轮实现了 Agent Loop、OpenAI、Calculator/Calendar、Postgres JSONB 与 UI 活动记录，但**未重启或部署公网服务，未修改 DNS、Access、Tunnel**。下面的2026-09-27验收记录仅适用于旧 Print 版本。
+
+默认模型现为 `gpt-6-luna`，`reasoning_effort = "medium"`，通过 Responses API 的 `reasoning.effort` 显式传递。本地3002端口已用该配置实际完成 Calendar → Calculator → 最终回答（14天、1680元）；Rust检查和隔离数据库集成测试通过。此验证不代表公网已切换模型。
+
+新版本上线前：
+
+1. 配置服务端 OPENAI_API_KEY 和 DATABASE_URL；系统参数位于 system_config/config.toml。可用 scripts/postgres.sh start 启动项目独立本机数据库，凭据在 Git 忽略的 deploy/runtime/postgres.env。数据库不自动开机启动。
+2. 运行 scripts/check.sh 和 scripts/test-db.sh；备份目标数据库。应用启动会应用 migrations/0001_agent.sql，在专用数据库中创建三张业务表。现有浏览器历史不自动迁移或删除。
+3. 停止连接同一数据库的本地预览实例；本版每个数据库只允许一个 Agent 服务实例。再通过 scripts/service.sh restart prod 构建、启动新版本。
+4. 重新验收获准身份、未获准身份、未登录页面与直接 API。发送日期与金额组合问题，确认真实工具步骤、最终回答、刷新后的数据库记录和跨设备历史。测试发送中刷新、失败草稿保留和登录过期。
+
+本地独立测试库已验证循环、持久化及失败边界；本地真实模型调用与浏览器验证记录见本次开发交付。它们不替代新的公网验收。
+
+回退：先停止新版本服务，恢复旧代码与其配套前端构建再启动。保留 Postgres 数据及迁移记录，不删除新表；旧 Print 版本不会读取这些历史。若需恢复数据库，使用部署前备份并单独确认恢复范围。不要撤销其他项目资源。
+
+## Print 版本历史进度（2026-09-27）
 
 - 已在控制台确认 `finanio.app` 为 Active，使用 Cloudflare DNS。
 - 部署前 DNS 记录为 0 条，没有现有网站路由需要覆盖。
@@ -76,9 +93,9 @@ tail -f deploy/runtime/service/prod.log
 
 Tunnel 原理与配置参考 [Cloudflare 官方文档](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/)。仅公开此 HTTP 服务，不公开 Vite、SSH 或其他本机端口。
 
-## 手机验收
+## Print 版本历史手机验收步骤
 
-当前服务已启动，可以直接测试：
+以下为旧版步骤，不用于验收新的 Agent 版本：
 
 1. 电脑保持联网与唤醒。在手机关闭 Wi-Fi、开启 4G/5G，使用 Safari 或 Chrome 打开 `https://finanio.app`（不加 `www` 或端口）。
 2. 首次访问应出现 **Log in to Calcal**。输入唯一获准邮箱，点 **Send login code**，到邮箱取码并在网页输入。登录跳转到 `langload.cloudflareaccess.com` 是已有 Cloudflare 团队的正常认证流程；成功后回到 `finanio.app`。

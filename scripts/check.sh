@@ -7,4 +7,5 @@ cargo test --locked
 cargo clippy --locked --all-targets -- -D warnings
 npm --prefix web run format:check
 npm --prefix web run lint
+npm --prefix web run test
 npm --prefix web run build

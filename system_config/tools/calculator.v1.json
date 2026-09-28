@@ -1,0 +1,13 @@
+{
+  "name": "calculator",
+  "version": "1",
+  "binding": "calculator.v1",
+  "description": "计算数学表达式。支持 + - * / ^、括号、sqrt、abs、exp、ln、sin、cos、tan、floor、ceil、round、min、max，角度使用弧度。结果为有限双精度近似值。表达式最长512字符。",
+  "activity": "正在计算",
+  "input_schema": {
+    "type": "object",
+    "properties": { "expression": { "type": "string", "minLength": 1, "maxLength": 512 } },
+    "required": ["expression"],
+    "additionalProperties": false
+  }
+}

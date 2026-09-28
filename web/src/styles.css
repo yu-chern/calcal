@@ -362,3 +362,37 @@ textarea::placeholder {
     transition: none !important;
   }
 }
+
+.activity-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64718f;
+  font-size: 13px;
+}
+.activity-details {
+  margin-top: 10px;
+  color: #64718f;
+  font-size: 12px;
+  white-space: normal;
+}
+.activity-details summary {
+  cursor: pointer;
+}
+.activity-details ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+.empty-hint {
+  margin-top: 20vh;
+  text-align: center;
+  color: #75809e;
+  font-size: 14px;
+}
+.text-button {
+  border: 0;
+  background: transparent;
+  color: #5362a0;
+  padding: 10px;
+  font-size: 13px;
+}

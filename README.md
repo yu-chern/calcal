@@ -1,137 +1,110 @@
 # Calcal
 
-用于学习 agent 工作机制的个人实验项目。React 提供手机和桌面聊天界面，Rust 接收请求；逐步从消息传递扩展到 agent loop。
+个人轻量 Agent 实验项目：React 手机聊天界面 + Rust Agent Loop + Postgres JSONB 对话记录。首个模型适配器使用 OpenAI Responses API，首批工具是 calculator 与 calendar。模型根据问题选择工具，Rust 校验并执行，随后把结果交回模型，直到回答或达到运行边界。
 
-**当前版本是 Print demo：发送文字 → Rust 原样 `println!` → 页面显示接收确认。没有 LLM、自动回复或 agent loop。** 不需要 API Key。
+UI 在运行时显示“正在分析问题”“正在查询日期”“正在计算”等真实步骤，完成后可展开执行记录。它不显示模型内部推理，也不把提交成功当作模型回答。
 
-公网入口：`https://finanio.app`。已配置专用 Cloudflare Access、DNS 与 Tunnel，并通过统一脚本启动生产服务；HTTPS 登录页和未登录 API 拦截已实测生效。仅允许用户指定的一个邮箱登录，手机登录后发送验收仍待完成。实际进度及手机测试步骤见 [部署说明](docs/deployment.md)。
+**本轮代码尚未部署到公网。** 历史 Cloudflare 配置和 Print 版本验收记录见 [部署说明](docs/deployment.md)，不能据此认定新 Agent 已上线。
 
-## 快速开始
+## 本地启动
 
-需要 Rust 1.98+、Node.js 22.12+（建议使用满足 Vite 要求的受支持 Node LTS）和 npm。
+需要 Rust 1.98+、Node.js 22.22.2+（22.x）、24.15+（24.x）或26+、npm、PostgreSQL 17+。本机脚本还需要 Bash、Python 3、curl、lsof，以及 PostgreSQL 的 initdb/pg_ctl/psql/createdb。
+
+1. 在本机 `.env` 设置 `OPENAI_API_KEY`。不要覆盖已有 Cloudflare 配置，也不要提交密钥。
+2. 使用已有 Postgres 时，在 `.env` 设置 `DATABASE_URL`；或者启动项目独立的数据库：
 
 ```bash
+./scripts/postgres.sh start
 npm --prefix web ci
 ./scripts/service.sh start
 ```
 
-打开 <http://127.0.0.1:5180>。Vite 自动更新前端，Rust 在 `127.0.0.1:3000` 接收 `/api` 请求。服务在后台运行，关闭终端后继续运行。
+打开 <http://127.0.0.1:5180>。后台开发服务使用 Vite + Rust；停止、状态、重启分别使用 `./scripts/service.sh stop|status|restart`。前台开发可用 `./scripts/dev.sh`。
 
-```bash
-./scripts/service.sh start    # 构建 Rust，启动前后端；重复执行不会多开
-./scripts/service.sh stop     # 同时停止前后端
-./scripts/service.sh status   # 查看运行状态和日志位置；未运行时退出码为 1
-./scripts/service.sh restart  # 同时停止、重新构建 Rust、启动前后端
-tail -f deploy/runtime/service/dev.log
-```
+`postgres.sh` 只管理 `deploy/runtime/postgres/data`，固定监听 `127.0.0.1:55432`，启用 SCRAM 密码认证，创建 `calcal` 和隔离测试库 `calcal_test`。随机凭据保存在被 Git 忽略、权限受限的 `deploy/runtime/postgres.env` 和 `postgres/pgpass`。它不会修改系统 PostgreSQL，也不安装开机服务。可用 `./scripts/postgres.sh status|stop` 管理；停止应用不会自动停止数据库。
 
-默认模式为 `dev`，可以显式添加第二个参数 `dev`。日志包含发送的 prompt 原文，追加保存在 Git 忽略的 `deploy/runtime/service/dev.log`。首次缺少 Vite 依赖时自动运行 `npm ci`；依赖锁文件变更后请重新执行 `npm --prefix web ci`。可以用 `WEB_PORT=5181 ./scripts/service.sh start` 更改前端端口，后续重启时也需提供相同变量。
+应用依次读取现有环境变量、`.env`、`deploy/runtime/postgres.env`，前者优先。数据库连接或 API Key 缺失会拒绝启动，不回退到打印或模拟回复。启动会应用 `migrations/` 中的 SQL 迁移。单个数据库只允许一个 Agent 服务实例，以便安全标记上次异常退出的运行。
 
-脚本要求 Bash、curl、lsof 及上述构建工具（macOS 自带 Bash/curl/lsof）。它只停止自己管理的进程，端口被其他进程占用时会报错；若此前用 `dev.sh` 启动，请先在原终端 Ctrl+C。任一组件退出会联动停止整套服务。它不提供开机自启或崩溃自动重启；电脑重启后需要重新 `start`。
-
-也可继续使用 `./scripts/dev.sh` 在前台运行并查看 prompt，Ctrl+C 同时停止两个开发进程。
-
-开发脚本显式启用本地免登录模式。请使用 `127.0.0.1:5180`，因为写入接口只接受配置的精确来源。代码默认使用 Cloudflare 身份校验，缺少配置会拒绝启动。
-
-验证与公网一致的“Rust 提供页面及 API”路径：
+如果 3000 端口已有生产服务，请使用另一个端口测试，避免中断它：
 
 ```bash
 npm --prefix web run build
-AUTH_MODE=local APP_ORIGIN=http://127.0.0.1:3000 cargo run --locked
+AUTH_MODE=local APP_ORIGIN=http://127.0.0.1:3002 PORT=3002 cargo run --locked
 ```
 
-打开 <http://127.0.0.1:3000>。这仍然是本地测试，不应连接公网 Tunnel。
+这时 Rust 同时提供页面和 API，访问 <http://127.0.0.1:3002>。本地免登录服务和 Vite 均不能连接公网 Tunnel。
 
-## 目录导航
+## 配置和扩展
 
 ```text
-calcal/
-├── AGENTS.md                  # coding agent 的约定、任务入口和检查命令
-├── Cargo.toml / Cargo.lock    # 唯一 Rust 包；不提前拆 workspace
-├── src/
-│   ├── main.rs                # 配置、监听、进程启动
-│   ├── lib.rs                 # 模块入口，便于集成测试
-│   ├── config.rs              # 环境变量、运行模式
-│   ├── http.rs                # 路由、请求校验、静态文件
-│   ├── access.rs              # Cloudflare JWT 校验与公钥缓存
-│   └── prompt.rs              # 唯一业务动作：打印 prompt
-├── web/
-│   ├── src/App.tsx            # 聊天状态、消息列表、输入框
-│   ├── src/ConversationHistory.tsx # 历史对话抽屉
-│   ├── src/conversations.ts   # 对话类型、本机历史读取与校验
-│   ├── src/api.ts             # 同源 API 请求和错误提示
-│   ├── src/styles.css         # 响应式样式
-│   ├── src/main.tsx           # React 挂载
-│   ├── public/                # favicon 等静态资源
-│   └── package.json           # 前端命令；package-lock.json 固定依赖
-├── tests/
-│   ├── api.rs                 # 输入、来源与本地访问边界
-│   ├── access.rs              # 有效/伪造/过期/其他用户 JWT
-│   └── fixtures/              # 仅用于离线测试的公开测试密钥
-├── scripts/                   # service（统一管理）/ dev / check / build / serve
-├── deploy/                    # Tunnel 配置示例；本机配置和凭据已忽略
-└── docs/deployment.md          # Cloudflare 配置、启动、验证与回退
+system_config/
+  config.toml                  模型、限额、数据库环境变量名、时区、启用工具
+  system_prompt.md             Agent 行为说明
+  tools/*.json                 版本化工具定义、JSON Schema、活动文案、实现绑定
+src/
+  agent/config.rs              TOML 读取与启动校验
+  agent/mod.rs                 Loop、限额、运行快照、任务关闭
+  models/mod.rs                模型无关的请求、响应及 ModelAdapter 接口
+  models/openai.rs             OpenAI Responses 协议与续接信息
+  tools/mod.rs                Tool 接口、注册表、校验和执行
+  tools/calculator.rs          受限数学表达式
+  tools/calendar.rs            日期与时区运算
+  storage/mod.rs               Postgres 持久化、幂等请求、历史上下文
+  http.rs / access.rs          同源 API、Access JWT 与访问边界
+migrations/                   版本化 SQL 迁移
 ```
 
-不引入数据库、Node 后端或 agent 框架。需要改后端行为时从 `src/prompt.rs` 开始；需要改界面时从 `web/src/App.tsx` 开始。后续真正引入循环时再增加 `src/agent/`。
+修改 `system_config/config.toml` 后重启生效，默认模型 ID 为 `gpt-6-luna`，`reasoning_effort = "medium"`。省略该字段时使用 Rust 常数 `DEFAULT_REASONING_EFFORT`（medium）；允许 none、low、medium、high、xhigh、max，非法值会在启动时拒绝。OpenAI 适配器将其发送为 Responses API 的 `reasoning.effort`，每次运行的配置快照也会保存实际值。[GPT-6 Luna 官方说明](https://developers.openai.com/api/docs/models/gpt-6-luna)。实际访问能力取决于 API 账户。API Key 和数据库密码不放在 TOML、工具定义或前端中。
 
-## 当前行为
+模型实现 `ModelAdapter` 后，在启动组装处注册/选择即可；Loop 和工具不依赖 OpenAI。当前只实现 OpenAI 适配器，没有声称兼容所有厂商。其他模型的工具调用协议、消息格式和能力需要由新适配器转换。不支持原生工具调用的纯文本模型需要额外校验策略。
 
-- 输入文字并发送；支持中文、emoji 和多行，后端保留原文。
-- 桌面 Enter 发送、Shift+Enter 换行；中文输入法选词不会误发送。手机通过发送按钮提交。
-- 明确显示发送中、打印成功与失败；失败保留草稿，不自动重发。
-- 顶部左侧打开历史对话，右侧 `+` 新建对话；后端返回的文字直接展示在消息区。
-- 历史和草稿保存在当前浏览器的 localStorage，刷新后可恢复；服务端不保存聊天历史，不同浏览器或设备之间不自动同步。清除网站数据会删除本机历史。
-- 每条消息最多 4000 个 Unicode 字符，请求体最多 64 KiB；空白消息拒绝发送。
-- **按此 demo 的目的，消息正文会进入后端标准输出。** 不要输入密钥；如将输出重定向到日志文件，日志也会保留正文。
+新工具实现 `Tool::execute`，在 `ToolRegistry::load` 的实现表添加 binding，并把 JSON 定义加入 TOML 的 definitions。注册表支持 register 替换和 disable 停用；克隆的运行快照保留原定义及实现。配置编辑在重启后生效；Rust 逻辑编辑需重新编译。尚无在线工具编辑界面或任意代码插件加载。`activity` 是受信任配置中的短文案，不来自模型生成的“思考过程”。
+
+## 工具与边界
+
+- Calculator：支持四则运算、括号、幂、sqrt/abs/exp/ln/sin/cos/tan/floor/ceil/round/min/max 等纯数学函数；三角函数使用弧度。最长512字节，拒绝非有限结果。使用 IEEE-754 双精度近似计算，金额应明确舍入，不承诺任意精度。无 shell、文件或网络访问能力。
+- Calendar：公历 today/inspect/diff/add；默认 Europe/Berlin，单次运行固定参考时间；星期一为1。diff 为 end-start，add 支持天/周/月/年，负数表示减法。不自动包含首尾两日，不支持节假日/工作日/个人日程。不存在的日期、月份截断或范围溢出返回结构化错误。
+- 默认最多8次模型请求、12次工具调用、90秒总时间、每工具2秒、每模型请求30秒，最多同时运行2个任务。限制由 Rust 执行。
+- 工具串行执行，错误交回模型修正；无自动网络重试、无写入工具自动重放。将来增加外部写入工具必须设计幂等和恢复语义。
+- HTTP 请求保持10秒上限；POST 仅接收并启动任务，运行进度通过短 GET 请求轮询。断开浏览器不会取消已接受的任务；服务关闭会取消任务，异常退出后标记为中断。
+- 上下文仅选择最近的完整用户/助手交流，并受字符预算限制；完整消息仍在数据库。字符预算不是精确 token 预算，目标模型仍可能拒绝超出其上下文限制的请求。历史工具细节不自动跨运行重放。
+
+## 数据存储
+
+Postgres 的 conversations 记录会话归属，runs 记录状态、模型/配置/工具版本快照，conversation_entries 按顺序保存 JSONB 用户消息、助手消息、模型输出、工具调用、工具结果和活动事件。内容有 schema_version，单条记录一行。
+
+API 只返回经过筛选的消息和简短活动记录，不返回模型续接信息、系统配置或凭据。会话归属来自已验证身份，客户端不能指定 owner。OpenAI 请求使用 `store:false`，本地保留所需续接内容；这不是对供应商整体数据保留政策的承诺。
+
+浏览器 localStorage 仅保存草稿、活动会话 ID 和待确认请求 ID；刷新后从 Postgres 恢复消息和运行状态。旧 Print 版本的 `calcal.conversations.v1` 不删除、不自动上传，本版界面不读取它；需要时可单独迁移。同一身份可在多个设备访问数据库历史。
+
+请求 ID 用于幂等：网络错误后，相同草稿重试会复用待确认 ID；已经完成的同一请求不会再次调用模型。同一会话同一时间只接受一个运行，冲突返回409。没有数据库恢复时不会声称消息已保存。
+
+**保留原先授权的日志行为：每个新接受的 prompt 原文会 println! 一次。** 日志和数据库都包含聊天正文；不会额外记录 API Key、JWT 或请求头。开发/生产日志位置仍在 `deploy/runtime/service/`。
 
 ## HTTP 接口
 
-所有接口和静态文件共用身份校验。生产模式验证 Cloudflare Access JWT 的签名、签发方、受众、有效期及允许的邮箱，不能用邮箱标头代替令牌。实现依据 [Cloudflare JWT 验证文档](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)。
+所有 API 和静态资源共用 Access/本地守卫；POST 要求精确 Origin。生产只允许配置的单一邮箱，验证 JWT 签名、签发方、受众、有效期等，不信任邮箱头。Rust 始终监听回环地址。
 
-| 请求 | 输入 | 成功响应 |
-| --- | --- | --- |
-| `GET /api/session` | 无 | `{"mode":"print","auth":"local","max_prompt_chars":4000}`，生产环境 `auth` 为 `cloudflare` |
-| `POST /api/messages` | `{"prompt":"你好"}` | `{"status":"printed","message":"消息已在 Rust 后端打印。"}` |
+| 接口 | 行为 |
+| --- | --- |
+| `GET /api/session` | `mode:agent`、auth、ready、max_prompt_chars |
+| `POST /api/messages` | JSON `{prompt, conversation_id, request_id}`，两个 ID 为 UUID；202返回 `{run_id}` |
+| `GET /api/runs/:id` | status、reason、prompt、response、error、activity、activities |
+| `GET /api/conversations?offset=0` | 最近100个会话摘要，按更新时间倒序 |
+| `GET /api/conversations/:id?offset=0` | 最近50个运行，页内按时间正序；支持加载更早消息 |
 
-在 `scripts/dev.sh` 启动后，可用以下命令直接验证：
+状态为 running/completed/failed。终止原因包括 completed、refused、model_error、timeout、budget_exhausted、context_limit、storage_error、cancelled、interrupted。模型拒绝时返回可见文本且 reason=refused。非最终文本不会提前展示成答案。
 
-```bash
-curl --fail-with-body http://127.0.0.1:3000/api/messages \
-  -H 'Origin: http://127.0.0.1:5180' \
-  -H 'Content-Type: application/json' \
-  --data '{"prompt":"你好，Rust！"}'
-```
+每条消息最多4000个 Unicode 字符，请求体64 KiB。错误包含 error：400无效输入、401未认证、403来源错误、404记录不存在或不属于当前身份、409会话忙/幂等冲突、413过大、429并发上限、503存储或配置不可用。数据库错误详情不会返回浏览器。
 
-错误返回 `{"error":"..."}`：无效输入 400、未认证 401、来源不匹配 403、请求超时 408、请求体过大 413。Rust 始终监听回环地址。本地模式还会拒绝公网 Host 和带 Cloudflare 转发标头的请求，防止误接入 Tunnel。
-
-## 检查与构建
+## 验证
 
 ```bash
-./scripts/check.sh  # Rust fmt/check/test/clippy + 前端格式/lint/类型检查/构建
-./scripts/build.sh  # npm ci + 前端构建 + Rust release 构建
+./scripts/check.sh      # fmt/check/test/clippy + 前端格式/lint/交互测试/类型检查/构建
+./scripts/test-db.sh    # 独立 TEST_DATABASE_URL：真实数据库 + 测试专用模型适配器
+./scripts/build.sh      # 前端 + Rust release
 ```
 
-前端格式化：`npm --prefix web run format`；Rust 格式化：`cargo fmt`。提交锁文件，不提交构建产物、`.env` 或 Tunnel 凭据。
+数据库测试默认被 cargo test 标为 ignored，必须单独执行 test-db.sh。该测试不删除记录，不连接 DATABASE_URL；覆盖多工具循环、JSONB记录、幂等、身份隔离、同会话冲突、超时、步数上限、取消与中断恢复。模型替身只在测试中使用。真实模型验收需另行发送计算/日期问题。
 
-## 部署与后续开发
-
-部署采用 `finanio.app → Cloudflare Access → Tunnel → 本机 Rust → React 静态页面 / API`。电脑和服务需要保持运行，休眠或断网时无法从手机访问。具体步骤及状态见 [部署说明](docs/deployment.md)。
-
-完成 Access、`.env` 和 DNS 配置后，用以下命令管理整套公网服务：
-
-```bash
-./scripts/service.sh stop          # 先停开发模式，释放 3000 端口
-./scripts/service.sh start prod    # 构建前端与 Rust，启动 Rust + Tunnel
-./scripts/service.sh status prod
-./scripts/service.sh restart prod  # 更新前后端构建并重启整套服务
-./scripts/service.sh stop prod
-```
-
-生产模式由 Rust 同时提供 React 构建产物与 API，无需运行 Vite。每条生产管理命令都要带 `prod`；开发与生产模式共用 3000 端口，不能同时启动。生产日志在 `deploy/runtime/service/prod.log`，`status prod` 只报告本机进程状态，不代表 Cloudflare 已连通或登录验收通过。
-
-手机使用蜂窝网络，在浏览器打开 <https://finanio.app>，通过唯一获准邮箱的验证码登录后使用；不需要与电脑连接同一 Wi-Fi。Access / DNS / `.env` 已配置，公网登录入口已验证；手机端登录、发送确认和电脑日志核对仍需按 [手机验收步骤](docs/deployment.md#手机验收) 完成。
-
-用户通过 Codex Remote 操作开发电脑，在手机浏览器测试这个项目；此仓库不承担远程终端或桌面控制。
-
-后续按实验需要依次增加：agent loop、模型适配器、工具调用、运行轨迹和持久化。不要把当前的“打印成功”解释为模型回复。
+生产启动仍使用 `./scripts/service.sh start prod`，事先配置数据库与 API Key，并停止使用同一数据库的本地预览实例。部署前备份数据库；详细状态、验收和回退见 [docs/deployment.md](docs/deployment.md)。
