@@ -1,13 +1,23 @@
 # Cloudflare 部署
 
-## 来源绑定计算版本：部署准备（2026-10-01）
+## 来源绑定计算版本已部署（2026-10-01）
 
-本次将生产工具切换为compute v2与clarify v2；实现见[协议说明](verified-computation.md)。当前段落在提交时仅记录部署准备，下面历史记录仍描述上一生产版本；实际重启与公网核验完成后更新本段。
+**业务提交`8b322fc`已推送到origin/master，并于柏林时间23:59完成生产核验。** 已通过`scripts/service.sh restart prod`部署到https://finanio.app，生产工具为compute v2与clarify v2；实现见[协议说明](verified-computation.md)。下方章节保留历史版本记录。
 
-- Rust/前端完整检查通过，隔离数据库旧协议兼容及新协议来源、答案、澄清测试通过。
+- Rust fmt/check/clippy与35项离线单元/API测试、5项前端交互测试、前端格式/lint/类型/构建通过；隔离数据库旧协议兼容及新协议来源、答案、澄清集成测试均通过。
 - 24类真实模型案例通过（先跑完整集，再对原文解析修复项和编号澄清续接做定向回归）；最新结果每类均为一次模型调用。结果及run ID保存在[评估记录](validation/verified-computation.json)。这些是隔离测试库结果。
 - 备份位于`deploy/runtime/backups/20261001-235328-verified/`：数据库归档经pg_restore --list检查、旧二进制、前端产物、HEAD源码归档和匹配的system_config。备份前生产运行中任务为0。无数据库迁移。
 - 回退版本为`43b8542`（业务代码`dee6d5a`）：恢复该提交的源码和system_config后重启生产，保留数据库、.env、Tunnel及未提交工作。旧二进制SHA-256为`0406a7d2a7c9613bb318326058e1f68c58b4655a4388137a9b099ee58d0ccab9`。本次无迁移，应用回退通常不需要恢复数据库。
+
+### 本次生产验收
+
+- 新supervisor PID为50363、Rust PID为50370；只监听127.0.0.1:3000。原有Tunnel显示4条边缘连接，公网DNS可解析。未修改DNS、Access或Tunnel配置。
+- release SHA-256：`99405e0e795c2a0073fea5c9f5732240e07e424cd2f403f4d5fa605742cc86b6`。部署证据保存在未提交的`deploy/runtime/verified-deployment.json`及`deployment.json`。
+- 未登录公网首页、GET /api/session、GET /api/conversations、POST /api/messages均返回302至langload.cloudflareaccess.com，TLS验证通过。
+- 本机生产API：无令牌、仅伪造邮箱标头、无效JWT均返回401。
+- 验收浏览器实际显示Calcal Access登录页，当前没有有效身份会话；登录后的生产UI完整往返未验证。未获准邮箱的真实登录拒绝本次也未执行；不能用伪造JWT测试代替这项验收。获准用户可从手机现有会话刷新后测试。
+
+建议测试：精确计算0.1+0.2；日期差乘每天费用；按周五筛选后计费；“最近的闰年二月最后一天为周五”先澄清，再回复3；以及精确计算9007199254740993+1。最终计算答案由后端呈现，执行记录仍保留真实工具活动。
 
 ## 日期与计算优化已部署（2026-10-01）
 
