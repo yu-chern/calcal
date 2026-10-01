@@ -1,13 +1,22 @@
 use super::*;
 fn registry() -> ToolRegistry {
-    let config =
-        crate::agent::config::SystemConfig::load(Path::new("system_config/config.toml")).unwrap();
-    ToolRegistry::load(Path::new("system_config"), &config.tools.definitions).unwrap()
+    ToolRegistry::load(
+        Path::new("system_config"),
+        &[
+            "tools/calculator.v1.json".into(),
+            "tools/calendar.v1.json".into(),
+            "tools/compute.v1.json".into(),
+            "tools/clarification.v1.json".into(),
+        ],
+    )
+    .unwrap()
 }
 fn context() -> ToolContext {
     ToolContext {
         reference_time: "2026-10-01T22:30:00Z".parse().unwrap(),
         timezone: chrono_tz::Europe::Berlin,
+        sources: vec![],
+        selections: std::collections::BTreeMap::new(),
     }
 }
 async fn run(args: Value) -> Value {

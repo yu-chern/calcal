@@ -1,5 +1,14 @@
 # Cloudflare 部署
 
+## 来源绑定计算版本：部署准备（2026-10-01）
+
+本次将生产工具切换为compute v2与clarify v2；实现见[协议说明](verified-computation.md)。当前段落在提交时仅记录部署准备，下面历史记录仍描述上一生产版本；实际重启与公网核验完成后更新本段。
+
+- Rust/前端完整检查通过，隔离数据库旧协议兼容及新协议来源、答案、澄清测试通过。
+- 24类真实模型案例通过（先跑完整集，再对原文解析修复项和编号澄清续接做定向回归）；最新结果每类均为一次模型调用。结果及run ID保存在[评估记录](validation/verified-computation.json)。这些是隔离测试库结果。
+- 备份位于`deploy/runtime/backups/20261001-235328-verified/`：数据库归档经pg_restore --list检查、旧二进制、前端产物、HEAD源码归档和匹配的system_config。备份前生产运行中任务为0。无数据库迁移。
+- 回退版本为`43b8542`（业务代码`dee6d5a`）：恢复该提交的源码和system_config后重启生产，保留数据库、.env、Tunnel及未提交工作。旧二进制SHA-256为`0406a7d2a7c9613bb318326058e1f68c58b4655a4388137a9b099ee58d0ccab9`。本次无迁移，应用回退通常不需要恢复数据库。
+
 ## 日期与计算优化已部署（2026-10-01）
 
 **代码提交 `dee6d5a` 已推送至 origin/master，部署完成核验时间为柏林时间 21:05:50；已通过 `scripts/service.sh restart prod` 部署到 https://finanio.app。** 包括 compute 批量/依赖执行、日期条件搜索、服务端实际日期上下文、clarify 澄清终止与续接、UI 澄清标记。实现和部署前验证见 [执行优化说明](agent-execution.md)。

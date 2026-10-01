@@ -8,6 +8,7 @@ request_timeout_seconds = 30
 max_output_tokens = 4096
 
 [agent]
+require_verified_answers = true
 system_prompt_file = "system_prompt.md"
 max_steps = 8
 max_tool_calls = 12
@@ -23,4 +24,4 @@ url_env = "DATABASE_URL"
 [tools]
 timezone = "Europe/Berlin"
 # Order does not determine execution order. The model selects tools as needed.
-definitions = ["tools/calculator.v1.json", "tools/calendar.v1.json", "tools/compute.v1.json", "tools/clarification.v1.json"]
+definitions = ["tools/compute.v2.json", "tools/clarification.v2.json"]

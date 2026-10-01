@@ -133,6 +133,8 @@ mod tests {
         let ctx = ToolContext {
             reference_time: "2026-09-28T23:30:00Z".parse().unwrap(),
             timezone: chrono_tz::Europe::Berlin,
+            sources: vec![],
+            selections: std::collections::BTreeMap::new(),
         };
         assert_eq!(
             Calendar

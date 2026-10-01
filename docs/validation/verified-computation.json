@@ -1,0 +1,321 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "medium",
+  "environment": "isolated calcal_test; not production",
+  "method": "latest result per case: full suite followed by targeted regression after source-parser fixes",
+  "passed": 24,
+  "cases": [
+    {
+      "name": "today",
+      "pass": true,
+      "run_id": "fcfd8d6d-c7f8-40c7-8ef6-2bfcb5c09fe2",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1643,
+      "response": "日期：2026-10-01（星期四）",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "arithmetic",
+      "pass": true,
+      "run_id": "c2c63d1b-35dd-45ca-b135-2487b4a2de94",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1781,
+      "response": "结果：309",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "batch_math",
+      "pass": true,
+      "run_id": "a20c21f1-f59b-43d3-bbed-d310b46188d5",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2263,
+      "response": "结果：12\n结果：120\n结果：1024",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "date_math",
+      "pass": true,
+      "run_id": "1658a955-56f7-4b90-8006-27eccd356d54",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2198,
+      "response": "相差天数：14 天\n合计：1680 元",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "date_search",
+      "pass": true,
+      "run_id": "b0828d80-29d3-406b-b1b6-52887b855270",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2714,
+      "response": "日期：2008-02-29（星期五）\n搜索口径：以 2026-10-01 为参考，向过去，最多检查 146097 天，不包含参考日。",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "ambiguous",
+      "pass": true,
+      "run_id": "4c973e8e-e79f-4248-9fea-0b0948393981",
+      "reason": "clarification",
+      "llm_calls": 1,
+      "tools": [
+        "clarify"
+      ],
+      "elapsed_ms": 1676,
+      "response": "你提供的条件：「最近」\n“最近”采用哪种方向和距离口径？\n1. 只向过去找\n2. 只向未来找\n3. 前后比较，按实际日期相差天数取最近",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "conflicting",
+      "pass": true,
+      "run_id": "36ce6346-421b-453e-9179-a64f7a2ed23c",
+      "reason": "clarification",
+      "llm_calls": 1,
+      "tools": [
+        "clarify"
+      ],
+      "elapsed_ms": 1360,
+      "response": "你提供的条件：「日期必须既在2026年10月1日之前，又在2026年10月15日之后」\n这些条件存在冲突，请说明应保留或修改哪些条件。",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "month_end",
+      "pass": true,
+      "run_id": "14e4a1f7-a650-4d38-aeb3-1b15ac4c5894",
+      "reason": "clarification",
+      "llm_calls": 1,
+      "tools": [
+        "clarify"
+      ],
+      "elapsed_ms": 1458,
+      "response": "你提供的条件：「2026年1月31日加一个月」\n月份或年份偏移可能遇到不存在的日期，请确认处理规则。\n1. 使用目标月份的最后一天\n2. 超出的天数向后顺延\n3. 保留原日期要求，遇到不存在的日期就说明无法得到该日期",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "precision",
+      "pass": true,
+      "run_id": "799c52b2-2110-4f53-9849-dc2dd14e1e66",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2193,
+      "response": "结果：9007199254740994",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "exact_decimal",
+      "pass": true,
+      "run_id": "1b2e64fc-9527-438b-9c22-bb3c86be1349",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1564,
+      "response": "结果：0.3",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "fraction",
+      "pass": true,
+      "run_id": "61d3117b-5b98-4e88-bad0-cfb1ad1d5645",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1462,
+      "response": "结果：0.5",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "rounding",
+      "pass": true,
+      "run_id": "b97c0a86-d69b-43f6-a906-eecb5fedddb9",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1566,
+      "response": "结果：2.68",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "list_math",
+      "pass": true,
+      "run_id": "b5fee077-581b-4f21-906f-2da7da292217",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2356,
+      "response": "结果：55",
+      "source_log": "calcal-v2-live-regression.log"
+    },
+    {
+      "name": "date_filter",
+      "pass": true,
+      "run_id": "51fe96ae-2b23-4c21-8e60-512723f95f3f",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2005,
+      "response": "合计：600 元",
+      "source_log": "calcal-v2-live-regression.log"
+    },
+    {
+      "name": "discount",
+      "pass": true,
+      "run_id": "c51905c8-3262-4243-9005-4664190d44f4",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1780,
+      "response": "结果：96 元",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "future_offset",
+      "pass": true,
+      "run_id": "1f244b1d-5dc6-4497-a75c-1532877ac82b",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1873,
+      "response": "日期：2024-02-29（星期四）",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "confirmed_month_end",
+      "pass": true,
+      "run_id": "45fdc84c-b56c-46a0-97c1-3edc0d8c235f",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 2185,
+      "response": "日期：2026-02-28（星期六）",
+      "source_log": "calcal-v2-live-regression.log"
+    },
+    {
+      "name": "linear_equation",
+      "pass": true,
+      "run_id": "a63e2219-8595-4dd1-b9d8-fc270c6a064c",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 4791,
+      "response": "结果：4",
+      "source_log": "calcal-v2-live-regression.log"
+    },
+    {
+      "name": "comparison",
+      "pass": true,
+      "run_id": "9e68d75e-8b0e-4a3b-a994-bcabd1756c4a",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1774,
+      "response": "条件是否成立：是",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "injection",
+      "pass": true,
+      "run_id": "32381f98-efef-4f93-adc3-28b395bac7a0",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1464,
+      "response": "结果：342",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "zero_division",
+      "pass": true,
+      "run_id": "bb844361-a1a7-4603-a27b-0397b675a61f",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 1364,
+      "response": "结果：无法得到数值：除数不能为零。",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "clarification_resume",
+      "pass": true,
+      "run_id": "25867da4-962c-48d5-be09-81a8685fe35c",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 3969,
+      "response": "日期：2008-02-29（星期五）\n搜索口径：以 2026-10-01 为参考，向过去，最多检查 146097 天，不包含参考日。",
+      "source_log": "calcal-v2-live-final.log"
+    },
+    {
+      "name": "numbered_question",
+      "pass": true,
+      "run_id": "ebc6573f-728e-4279-ae71-8e24fe3bfef9",
+      "reason": "clarification",
+      "llm_calls": 1,
+      "tools": [
+        "clarify"
+      ],
+      "elapsed_ms": 1981,
+      "response": "你提供的条件：「最近的闰年且二月最后一天为周五」\n“最近”采用哪种方向和距离口径？\n1. 只向过去找\n2. 只向未来找\n3. 前后比较，按实际日期相差天数取最近",
+      "source_log": "calcal-v2-live-regression.log"
+    },
+    {
+      "name": "numbered_resume",
+      "pass": true,
+      "run_id": "6b87807b-f5ba-4bf1-85b6-06ea276f9d54",
+      "reason": "completed",
+      "llm_calls": 1,
+      "tools": [
+        "compute"
+      ],
+      "elapsed_ms": 4086,
+      "response": "日期：2036-02-29（星期五）\n搜索口径：以 2028-10-28 为参考，前后按实际天数距离比较，最多检查 146097 天，不包含参考日。",
+      "source_log": "calcal-v2-live-regression.log"
+    }
+  ]
+}

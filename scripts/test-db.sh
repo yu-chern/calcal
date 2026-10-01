@@ -8,4 +8,4 @@ if [[ -z "${TEST_DATABASE_URL:-}" && -f deploy/runtime/postgres.env ]]; then
   set +a
 fi
 [[ -n "${TEST_DATABASE_URL:-}" ]] || { echo 'Set TEST_DATABASE_URL to an isolated test database, or run scripts/postgres.sh start.' >&2; exit 1; }
-exec cargo test --locked --test agent -- --ignored
+exec cargo test --locked --test agent --test verified_agent -- --ignored

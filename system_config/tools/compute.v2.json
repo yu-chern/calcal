@@ -1,0 +1,137 @@
+{
+  "name": "compute",
+  "version": "2",
+  "binding": "compute.v2",
+  "description": "执行来源绑定的受限计算程序并由服务器直接生成最终答案。inputs从编号用户原文精确摘录quote，工具自己解析；steps表达式只能引用输入、此前步骤和系统常量，禁止数值字面量。outputs只能引用成功步骤。支持精确有理数、公历日期、列表、条件、筛选、聚合及有界搜索。成功后立即结束本轮，无需模型再复述。函数和示例见系统说明。",
+  "activity": "正在执行并验证计算",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "inputs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "source": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "quote": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "number",
+                "date",
+                "weekday",
+                "month",
+                "expression",
+                "direction",
+                "month_rule",
+                "numbers"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "source",
+            "quote",
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        "minItems": 0,
+        "maxItems": 32
+      },
+      "steps": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "expression": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            }
+          },
+          "required": [
+            "id",
+            "expression"
+          ],
+          "additionalProperties": false
+        },
+        "minItems": 1,
+        "maxItems": 16
+      },
+      "outputs": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string",
+              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+              "maxLength": 32,
+              "minLength": 1
+            },
+            "label": {
+              "type": "string",
+              "enum": [
+                "none",
+                "result",
+                "date",
+                "days",
+                "total",
+                "average",
+                "comparison"
+              ]
+            },
+            "unit": {
+              "type": "string",
+              "enum": [
+                "none",
+                "yuan",
+                "days",
+                "weeks",
+                "months",
+                "years",
+                "hours",
+                "minutes",
+                "seconds"
+              ]
+            }
+          },
+          "required": [
+            "ref",
+            "label",
+            "unit"
+          ],
+          "additionalProperties": false
+        },
+        "minItems": 1,
+        "maxItems": 16
+      }
+    },
+    "required": [
+      "inputs",
+      "steps",
+      "outputs"
+    ],
+    "additionalProperties": false
+  }
+}

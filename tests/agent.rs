@@ -142,7 +142,13 @@ impl ModelAdapter for Scripted {
     }
 }
 fn config() -> SystemConfig {
-    SystemConfig::load(Path::new("system_config/config.toml")).unwrap()
+    let mut config = SystemConfig::load(Path::new("system_config/config.toml")).unwrap();
+    config.agent.require_verified_answers = false;
+    config.tools.definitions = ["calculator", "calendar", "compute", "clarification"]
+        .iter()
+        .map(|name| format!("tools/{name}.v1.json"))
+        .collect();
+    config
 }
 fn service(
     store: Store,

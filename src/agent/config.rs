@@ -3,6 +3,10 @@ use std::{path::Path, time::Duration};
 
 pub const DEFAULT_REASONING_EFFORT: &str = "medium";
 
+fn verified_by_default() -> bool {
+    true
+}
+
 fn default_reasoning_effort() -> String {
     DEFAULT_REASONING_EFFORT.into()
 }
@@ -32,6 +36,8 @@ pub struct ModelConfig {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct AgentConfig {
+    #[serde(default = "verified_by_default")]
+    pub require_verified_answers: bool,
     pub system_prompt_file: String,
     pub max_steps: usize,
     pub max_tool_calls: usize,
