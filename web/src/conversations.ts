@@ -5,6 +5,7 @@ export type Exchange = {
   prompt: string
   status: 'sending' | 'complete' | 'failed'
   response?: string
+  reason?: string
   error?: string
   activity?: string
   activities?: string[]
@@ -40,6 +41,7 @@ export function fromRun(run: Run): Exchange {
     status:
       run.status === 'running' ? 'sending' : run.status === 'completed' ? 'complete' : 'failed',
     response: run.response ?? undefined,
+    reason: run.reason ?? undefined,
     error: run.error ?? undefined,
     activity: run.activity,
     activities: run.activities,

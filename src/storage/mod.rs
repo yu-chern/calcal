@@ -203,7 +203,7 @@ impl Store {
             "failed"
         };
         sqlx::query("UPDATE runs SET status=$2,reason=$3,error=$4,activity=$5,finished_at=now() WHERE id=$1")
-            .bind(run).bind(status).bind(reason).bind(error).bind(if text.is_some() {"已完成"} else {"运行已停止"}).execute(&mut *tx).await?;
+            .bind(run).bind(status).bind(reason).bind(error).bind(if reason == "clarification" {"等待澄清"} else if text.is_some() {"已完成"} else {"运行已停止"}).execute(&mut *tx).await?;
         sqlx::query("INSERT INTO conversation_entries(conversation_id,run_id,kind,payload) VALUES($1,$2,'run_finished',$3)")
             .bind(conversation).bind(run).bind(json!({"schema_version":1,"reason":reason,"status":status})).execute(&mut *tx).await?;
         sqlx::query("UPDATE conversations SET updated_at=now() WHERE id=$1")
@@ -300,6 +300,33 @@ impl Store {
         turns: usize,
         max_chars: usize,
     ) -> Result<Vec<ChatMessage>, StoreError> {
+        // Preserve the whole unresolved question across clarification turns, even
+        // when history_turns is small. The Agent's context limit still applies;
+        // never silently drop conditions and guess an answer.
+        let pending: Option<Value> = sqlx::query_scalar("SELECT e.payload FROM conversation_entries e JOIN runs r ON r.id=e.run_id WHERE e.kind='clarification' AND r.reason='clarification' AND r.id=(SELECT id FROM runs WHERE conversation_id=$1 AND status='completed' AND id<>$2 AND created_at < (SELECT created_at FROM runs WHERE id=$2) ORDER BY created_at DESC LIMIT 1) ORDER BY e.sequence DESC LIMIT 1")
+            .bind(conversation).bind(current).fetch_optional(&self.pool).await?;
+        if let Some(pending) = pending {
+            let mut messages: Vec<ChatMessage> =
+                serde_json::from_value(pending["messages"].clone())
+                    .map_err(|_| StoreError::Unavailable)?;
+            messages.push(ChatMessage {
+                role: "assistant".into(),
+                text: pending["question"]["text"]
+                    .as_str()
+                    .ok_or(StoreError::Unavailable)?
+                    .into(),
+            });
+            let payload: Value = sqlx::query_scalar("SELECT payload FROM conversation_entries WHERE run_id=$1 AND conversation_id=$2 AND kind='user_message' ORDER BY sequence LIMIT 1")
+                .bind(current).bind(conversation).fetch_one(&self.pool).await?;
+            messages.push(ChatMessage {
+                role: "user".into(),
+                text: payload["content"][0]["text"]
+                    .as_str()
+                    .ok_or(StoreError::Unavailable)?
+                    .into(),
+            });
+            return Ok(messages);
+        }
         let rows = sqlx::query("SELECT e.kind,e.payload,e.run_id FROM conversation_entries e WHERE e.conversation_id=$1 AND e.kind IN ('user_message','assistant_message') AND e.run_id IN (SELECT id FROM runs WHERE conversation_id=$1 AND (status='completed' OR id=$2) ORDER BY created_at DESC LIMIT $3) ORDER BY e.sequence")
             .bind(conversation).bind(current).bind(turns as i64).fetch_all(&self.pool).await?;
         let mut groups: Vec<(Uuid, Vec<ChatMessage>)> = Vec::new();

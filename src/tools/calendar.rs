@@ -15,7 +15,7 @@ struct Arguments {
     amount: Option<i64>,
     unit: Option<String>,
 }
-fn date(value: Option<&str>) -> Result<NaiveDate, String> {
+pub(super) fn date(value: Option<&str>) -> Result<NaiveDate, String> {
     let value = value.ok_or("缺少日期")?;
     if value.len() != 10 {
         return Err("日期格式必须为 YYYY-MM-DD".into());
@@ -26,13 +26,47 @@ fn date(value: Option<&str>) -> Result<NaiveDate, String> {
     }
     Ok(d)
 }
-fn describe(d: NaiveDate) -> Value {
+pub(super) fn describe(d: NaiveDate) -> Value {
     json!({"date":d.to_string(),"weekday":d.weekday().number_from_monday(),"leap_year":d.leap_year()})
 }
 #[async_trait]
 impl Tool for Calendar {
     async fn execute(&self, args: Value, ctx: &ToolContext) -> Result<Value, String> {
         let a: Arguments = serde_json::from_value(args).map_err(|_| "日期工具参数无效")?;
+        let valid_fields = match a.operation.as_str() {
+            "today" => {
+                a.date.is_none()
+                    && a.start.is_none()
+                    && a.end.is_none()
+                    && a.amount.is_none()
+                    && a.unit.is_none()
+            }
+            "inspect" => {
+                a.date.is_some()
+                    && a.start.is_none()
+                    && a.end.is_none()
+                    && a.amount.is_none()
+                    && a.unit.is_none()
+            }
+            "diff" => {
+                a.date.is_none()
+                    && a.start.is_some()
+                    && a.end.is_some()
+                    && a.amount.is_none()
+                    && a.unit.is_none()
+            }
+            "add" => {
+                a.date.is_some()
+                    && a.start.is_none()
+                    && a.end.is_none()
+                    && a.amount.is_some()
+                    && a.unit.is_some()
+            }
+            _ => false,
+        };
+        if !valid_fields {
+            return Err("日期操作的必需参数缺失或存在不适用的参数，请先确认计算口径".into());
+        }
         match a.operation.as_str() {
             "today" => {
                 let mut result =

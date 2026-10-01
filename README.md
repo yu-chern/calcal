@@ -1,10 +1,14 @@
 # Calcal
 
-个人轻量 Agent 实验项目：React 手机聊天界面 + Rust Agent Loop + Postgres JSONB 对话记录。首个模型适配器使用 OpenAI Responses API，首批工具是 calculator 与 calendar。模型根据问题选择工具，Rust 校验并执行，随后把结果交回模型，直到回答或达到运行边界。
+个人轻量 Agent 实验项目：React 手机聊天界面 + Rust Agent Loop + Postgres JSONB 对话记录。首个模型适配器使用 OpenAI Responses API，工具包括 calculator、calendar、compute 与 clarify。模型根据问题选择工具，Rust 校验并执行，随后把结果交回模型，直到回答或达到运行边界。
 
 UI 在运行时显示“正在分析问题”“正在查询日期”“正在计算”等真实步骤，完成后可展开执行记录。它不显示模型内部推理，也不把提交成功当作模型回答。
 
 **Agent 版本已于2026-09-28部署到 [finanio.app](https://finanio.app)，仅允许指定邮箱登录。** 公网已完成真实日期/计算工具调用、最终回答与刷新恢复验收，模型为 `gpt-6-luna`、推理级别为 `medium`。手机蜂窝网络、跨设备历史及未获准邮箱真实登录仍待验收，详见 [部署说明](docs/deployment.md)。当前由本机承载，电脑需保持联网与唤醒。
+
+## 日期与计算执行优化（2026-10-01）
+
+当前源码增加批量/依赖计算、有界日期条件搜索、可信当前日期上下文与显式澄清续接。改动和验证见 [优化说明](docs/agent-execution.md)。新后端行为尚未部署，以上公网后端状态仍指上一版本；没有重启生产服务。检查脚本会重建 `web/dist`，若现有服务直接读取该目录，前端可能先更新；这不代表新工具已经生效。
 
 ## 本地启动
 
@@ -49,6 +53,9 @@ src/
   tools/mod.rs                Tool 接口、注册表、校验和执行
   tools/calculator.rs          受限数学表达式
   tools/calendar.rs            日期与时区运算
+  tools/compute.rs             批量与依赖计算计划
+  tools/date_search.rs         有界日期条件搜索
+  tools/clarification.rs       终止当前运行并等待澄清
   storage/mod.rs               Postgres 持久化、幂等请求、历史上下文
   http.rs / access.rs          同源 API、Access JWT 与访问边界
 migrations/                   版本化 SQL 迁移
@@ -64,14 +71,16 @@ migrations/                   版本化 SQL 迁移
 
 - Calculator：支持四则运算、括号、幂、sqrt/abs/exp/ln/sin/cos/tan/floor/ceil/round/min/max 等纯数学函数；三角函数使用弧度。最长512字节，拒绝非有限结果。使用 IEEE-754 双精度近似计算，金额应明确舍入，不承诺任意精度。无 shell、文件或网络访问能力。
 - Calendar：公历 today/inspect/diff/add；默认 Europe/Berlin，单次运行固定参考时间；星期一为1。diff 为 end-start，add 支持天/周/月/年，负数表示减法。不自动包含首尾两日，不支持节假日/工作日/个人日程。不存在的日期、月份截断或范围溢出返回结构化错误。
-- 默认最多8次模型请求、12次工具调用、90秒总时间、每工具2秒、每模型请求30秒，最多同时运行2个任务。限制由 Rust 执行。
-- 工具串行执行，错误交回模型修正；无自动网络重试、无写入工具自动重放。将来增加外部写入工具必须设计幂等和恢复语义。
+- Compute：最多16个有序步骤，批量数学/日期或跨类型依赖可在一次工具往返内完成。通过 JSON pointer 引用此前成功步骤的数值或字符串（例如 `/span/days`），不是字符串插值或任意代码执行。日期搜索支持月份、月日、星期、闰年、月末条件及过去/未来/双向最近，单步最多搜索146097天（400年），最多16个命中，并列截止项全部保留。只问最近一个时 limit=1。未命中仅代表指定范围内无解；不会从有限查询推断全局无解。
+- Clarify：有歧义、冲突、关键条件缺失或能力不足时，模型提交问题和可选选项，后端立即结束本轮并等待用户回复，不再调用模型复述问题。如果同一模型响应混有计算调用，优先澄清并记录其他工具未执行。
+- 默认最多8次模型请求、12个工具工作单元、90秒总时间、每工具2秒、每模型请求30秒，最多同时运行2个任务。普通工具计1，compute 按计划子步骤数计费；16步是工具上限，默认总预算12仍生效。搜索循环主动让出执行权以接受超时取消。限制由 Rust 执行。
+- 工具串行执行；compute 子步骤在后端直接传递结果，任一步失败后停止剩余步骤，保存成功/失败/跳过信息。错误交回模型修正；无自动网络重试、无写入工具自动重放。将来增加外部写入工具必须设计幂等和恢复语义。
 - HTTP 请求保持10秒上限；POST 仅接收并启动任务，运行进度通过短 GET 请求轮询。断开浏览器不会取消已接受的任务；服务关闭会取消任务，异常退出后标记为中断。
-- 上下文仅选择最近的完整用户/助手交流，并受字符预算限制；完整消息仍在数据库。字符预算不是精确 token 预算，目标模型仍可能拒绝超出其上下文限制的请求。历史工具细节不自动跨运行重放。
+- 每轮把固定参考时间对应的实际日期和时区写入模型 instructions 与运行快照，查询实际今天不必调用工具。上下文默认选择最近的完整用户/助手交流，并受字符预算限制；完整消息仍在数据库。字符预算不是精确 token 预算，目标模型仍可能拒绝超出其上下文限制的请求。历史工具细节不自动跨运行重放。未解决的澄清链单独保存并在后续轮次优先恢复，避免短历史窗口丢失原问题；过长时明确报上下文上限，不静默丢弃条件。
 
 ## 数据存储
 
-Postgres 的 conversations 记录会话归属，runs 记录状态、模型/配置/工具版本快照，conversation_entries 按顺序保存 JSONB 用户消息、助手消息、模型输出、工具调用、工具结果和活动事件。内容有 schema_version，单条记录一行。
+Postgres 的 conversations 记录会话归属，runs 记录状态、模型/配置/工具版本快照，conversation_entries 按顺序保存 JSONB 用户消息、助手消息、模型输出、工具调用、工具结果和活动事件。内容有 schema_version，单条记录一行。新运行快照为 schema_version=2，保存动态 instructions 与 runtime_context；工具事件增加 step 和 work_units。clarification 事件保存问题和待确认上下文，tool_skipped 明确表示未执行；compute 的逐子步骤原始参数、解析后参数和结果保存在 tool_result 中。无需新增数据库迁移，旧记录保持原样。
 
 API 只返回经过筛选的消息和简短活动记录，不返回模型续接信息、系统配置或凭据。会话归属来自已验证身份，客户端不能指定 owner。OpenAI 请求使用 `store:false`，本地保留所需续接内容；这不是对供应商整体数据保留政策的承诺。
 
@@ -93,7 +102,7 @@ API 只返回经过筛选的消息和简短活动记录，不返回模型续接�
 | `GET /api/conversations?offset=0` | 最近100个会话摘要，按更新时间倒序 |
 | `GET /api/conversations/:id?offset=0` | 最近50个运行，页内按时间正序；支持加载更早消息 |
 
-状态为 running/completed/failed。终止原因包括 completed、refused、model_error、timeout、budget_exhausted、context_limit、storage_error、cancelled、interrupted。模型拒绝时返回可见文本且 reason=refused。非最终文本不会提前展示成答案。
+状态为 running/completed/failed。终止原因包括 completed、clarification、refused、model_error、timeout、budget_exhausted、context_limit、storage_error、cancelled、interrupted。模型拒绝时返回可见文本且 reason=refused。非最终文本不会提前展示成答案。澄清返回 `status=completed, reason=clarification, activity=等待澄清`：表示这一轮已结束、仍需用户输入，并非已解出原问题；response 是澄清问题。UI 标注“等待你补充条件”，用户继续在同一会话正常发送消息即可，无需新的端点。
 
 每条消息最多4000个 Unicode 字符，请求体64 KiB。错误包含 error：400无效输入、401未认证、403来源错误、404记录不存在或不属于当前身份、409会话忙/幂等冲突、413过大、429并发上限、503存储或配置不可用。数据库错误详情不会返回浏览器。
 
@@ -105,6 +114,6 @@ API 只返回经过筛选的消息和简短活动记录，不返回模型续接�
 ./scripts/build.sh      # 前端 + Rust release
 ```
 
-数据库测试默认被 cargo test 标为 ignored，必须单独执行 test-db.sh。该测试不删除记录，不连接 DATABASE_URL；覆盖多工具循环、JSONB记录、幂等、身份隔离、同会话冲突、超时、步数上限、取消与中断恢复。模型替身只在测试中使用。真实模型验收需另行发送计算/日期问题。
+数据库测试默认被 cargo test 标为 ignored，必须单独执行 test-db.sh。该测试不删除记录，不连接 DATABASE_URL；覆盖多工具循环、JSONB记录、幂等、身份隔离、同会话冲突、超时、步数上限、取消与中断恢复。模型替身只在测试中使用。另有显式启用的真实模型回归：`CALCAL_LIVE_EVAL=1 cargo test --locked --test agent_live -- --ignored --nocapture`。它读取本机服务端模型配置，会消耗模型额度，只允许名称以 `_test` 结尾且不同于 `DATABASE_URL` 的测试库；不属于默认测试或 `test-db.sh`。只输出测试问题、可见回答与工具数据，不输出凭据或供应商推理续接内容。
 
 生产启动仍使用 `./scripts/service.sh start prod`，事先配置数据库与 API Key，并停止使用同一数据库的本地预览实例。部署前备份数据库；详细状态、验收和回退见 [docs/deployment.md](docs/deployment.md)。

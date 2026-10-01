@@ -1,0 +1,42 @@
+{
+  "name": "clarify",
+  "version": "1",
+  "binding": "clarification.v1",
+  "description": "请求用户澄清并立即结束本轮等待回复。遇到会改变答案的歧义、条件冲突、缺少单位/日期范围/计算口径或不支持的能力时使用。尽量一次问清相关条件，不猜测。question写简短中文或用户语言问题，options给0至4个清晰选项（也允许用户自由回答）。与计算工具不要同时调用；此动作不需要后续模型调用来复述。用户回复后新一轮携带原问题和澄清上下文继续。",
+  "activity": "正在确认问题条件",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      },
+      "reason": {
+        "type": "string",
+        "enum": [
+          "ambiguous",
+          "conflicting",
+          "missing_information",
+          "unsupported"
+        ]
+      },
+      "options": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "maxItems": 4,
+        "description": "选项只描述不同的条件/处理规则，不提前写未经工具验证的计算结果，不提供系统没有的能力。"
+      }
+    },
+    "required": [
+      "question",
+      "reason",
+      "options"
+    ],
+    "additionalProperties": false
+  }
+}

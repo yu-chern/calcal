@@ -215,3 +215,49 @@ test('an unacknowledged draft stays after older database messages when restoring
   expect(exchanges[1].textContent).toContain('较新的待确认消息')
   expect(sendPrompt).not.toHaveBeenCalled()
 })
+
+test('clarification is terminal, visible after reload, and accepts a same-conversation reply', async () => {
+  const conversationId = 'f15e9f70-7079-4652-b326-41b1b85c67d2'
+  const question = {
+    id: 'clarification',
+    conversation_id: conversationId,
+    status: 'completed' as const,
+    reason: 'clarification',
+    prompt: '最近一个闰年是哪年？',
+    response: '请确认向过去找还是向未来找。',
+    error: null,
+    activity: '等待澄清',
+    activities: ['正在分析问题', '正在确认问题条件', '工具执行完成'],
+  }
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      activeId: conversationId,
+      drafts: [{ id: conversationId, draft: '向过去找' }],
+    }),
+  )
+  vi.mocked(listConversations).mockResolvedValue([
+    { id: conversationId, title: question.prompt, updated_at: '2026-10-01T16:00:00Z' },
+  ])
+  vi.mocked(getConversation).mockResolvedValue([question])
+  vi.mocked(sendPrompt).mockResolvedValue({ run_id: 'resumed' })
+  vi.mocked(getRun).mockImplementation(async (id) => ({
+    ...question,
+    id,
+    reason: 'completed',
+    prompt: '向过去找',
+    response: '2024年。',
+    activity: '已完成',
+  }))
+  await mount()
+  expect(host.textContent).toContain('等待你补充条件')
+  expect(host.textContent).toContain(question.response)
+  expect(host.querySelector('textarea')!.disabled).toBe(false)
+  expect(host.querySelector('textarea')!.value).toBe('向过去找')
+  expect(getRun).not.toHaveBeenCalled()
+  await submit()
+  expect(sendPrompt).toHaveBeenCalledWith('向过去找', conversationId, expect.any(String))
+  expect(host.textContent).toContain('2024年。')
+  expect(host.textContent).not.toContain('等待你补充条件')
+  expect(host.querySelector('textarea')!.value).toBe('')
+})

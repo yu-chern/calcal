@@ -1,5 +1,8 @@
 mod calculator;
 mod calendar;
+mod clarification;
+mod compute;
+mod date_search;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -24,6 +27,9 @@ pub struct ToolContext {
 }
 #[async_trait]
 pub trait Tool: Send + Sync {
+    fn work_units(&self, _: &Value) -> usize {
+        1
+    }
     async fn execute(&self, arguments: Value, context: &ToolContext) -> Result<Value, String>;
 }
 struct RegisteredTool {
@@ -77,6 +83,15 @@ impl ToolRegistry {
     pub fn definition(&self, name: &str) -> Option<&ToolDefinition> {
         self.active.get(name).map(|t| &t.definition)
     }
+    pub fn work_units(&self, name: &str, args: &Value) -> usize {
+        self.active
+            .get(name)
+            .map_or(1, |t| t.implementation.work_units(args))
+    }
+    pub fn is_clarification(&self, name: &str) -> bool {
+        self.definition(name)
+            .is_some_and(|d| d.binding == "clarification.v1")
+    }
     pub fn load(root: &Path, paths: &[String]) -> Result<Self, String> {
         let implementations: BTreeMap<&str, Arc<dyn Tool>> = BTreeMap::from([
             (
@@ -84,6 +99,11 @@ impl ToolRegistry {
                 Arc::new(calculator::Calculator) as Arc<dyn Tool>,
             ),
             ("calendar.v1", Arc::new(calendar::Calendar) as Arc<dyn Tool>),
+            ("compute.v1", Arc::new(compute::Compute) as Arc<dyn Tool>),
+            (
+                "clarification.v1",
+                Arc::new(clarification::Clarification) as Arc<dyn Tool>,
+            ),
         ]);
         let mut registry = Self::default();
         for path in paths {
@@ -119,6 +139,13 @@ impl ToolRegistry {
             );
         }
         match tokio::time::timeout(timeout, tool.implementation.execute(args, context)).await {
+            Ok(Ok(data))
+                if data.to_string().len() <= 16000
+                    && tool.definition.binding == "compute.v1"
+                    && data["complete"] == false =>
+            {
+                json!({"ok":false,"error":{"code":"PLAN_FAILED","message":"组合计算未完成；失败后的步骤未执行，请检查条件或澄清后继续"},"data":data})
+            }
             Ok(Ok(data)) if data.to_string().len() <= 16000 => json!({"ok":true,"data":data}),
             Ok(Ok(_)) => failure("RESULT_TOO_LARGE", "工具结果过大"),
             Ok(Err(message)) => failure("TOOL_ERROR", &message),
@@ -180,3 +207,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod compute_tests;

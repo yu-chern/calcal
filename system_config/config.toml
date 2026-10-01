@@ -23,4 +23,4 @@ url_env = "DATABASE_URL"
 [tools]
 timezone = "Europe/Berlin"
 # Order does not determine execution order. The model selects tools as needed.
-definitions = ["tools/calculator.v1.json", "tools/calendar.v1.json"]
+definitions = ["tools/calculator.v1.json", "tools/calendar.v1.json", "tools/compute.v1.json", "tools/clarification.v1.json"]

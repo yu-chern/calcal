@@ -42,6 +42,64 @@ impl ModelAdapter for Scripted {
             return Err("测试模型不可用".into());
         }
         let n = request.turns.len();
+        if matches!(self.mode, "clarify" | "mixed_clarify") {
+            assert!(request.instructions.contains("服务端提供的本轮日期上下文"));
+            let mut tool_calls = vec![];
+            if self.mode == "mixed_clarify" {
+                tool_calls.push(ToolCall {
+                    id: "must_skip".into(),
+                    name: "calculator".into(),
+                    arguments: json!({"expression":"999*999"}),
+                });
+            }
+            tool_calls.push(ToolCall {id:"question".into(),name:"clarify".into(),arguments:json!({"question":"请确认日期范围和是否包含首尾两天。","reason":"missing_information","options":[]})});
+            return Ok(ModelTurn {
+                text: String::new(),
+                tool_calls,
+                refused: false,
+                usage: json!({}),
+                continuation: json!([]),
+            });
+        }
+        if matches!(self.mode, "combo" | "resume") {
+            if self.mode == "resume" {
+                assert_eq!(request.messages[0].text, "帮我算住宿费，每天120元。");
+                assert!(
+                    request
+                        .messages
+                        .iter()
+                        .any(|m| m.role == "assistant" && m.text.contains("请确认日期范围"))
+                );
+                assert!(request.messages.last().unwrap().text.contains("2026-10-01"));
+            }
+            let tool_calls = if n == 0 {
+                vec![ToolCall {
+                    id: "plan".into(),
+                    name: "compute".into(),
+                    arguments: json!({"steps":[
+                        {"id":"span","action":{"kind":"calendar","operation":"diff","date":null,"start":"2026-10-01","end":"2026-10-15","amount":null,"unit":null}},
+                        {"id":"total","action":{"kind":"calculate","expression":"days*120","variables":[{"name":"days","value":{"ref":"/span/days"}}]}}
+                    ]}),
+                }]
+            } else {
+                assert_eq!(
+                    request.outputs[0][0].result["data"]["steps"][1]["data"]["value"],
+                    1680.0
+                );
+                vec![]
+            };
+            return Ok(ModelTurn {
+                text: if n == 0 {
+                    String::new()
+                } else {
+                    "相差14天，共1680元。".into()
+                },
+                tool_calls,
+                refused: false,
+                usage: json!({}),
+                continuation: json!([]),
+            });
+        }
         let (text, tool_calls) = if self.mode == "loop" {
             (
                 "",
@@ -230,6 +288,119 @@ async fn persistent_agent_http_and_failure_boundaries() {
     .unwrap();
     assert_eq!(results, 2);
     agent.shutdown().await;
+    // Combined math/date tasks use two model calls, one outer tool call and two
+    // budgeted substeps. Clarification is one model call, terminal, and resumable.
+    let (combined, model) = service(store.clone(), "combo", config());
+    let run = Uuid::new_v4();
+    combined
+        .submit("tester", Uuid::new_v4(), run, "日期差与费用")
+        .await
+        .unwrap();
+    assert_eq!(
+        terminal(&store, "tester", run).await.reason.as_deref(),
+        Some("completed")
+    );
+    assert_eq!(model.calls.load(Ordering::SeqCst), 2);
+    let results: Vec<Value> = sqlx::query_scalar(
+        "SELECT payload FROM conversation_entries WHERE run_id=$1 AND kind='tool_result'",
+    )
+    .bind(run)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(results.len(), 1);
+    assert_eq!(
+        results[0]["result"]["data"]["steps"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+    let snapshot: Value = sqlx::query_scalar("SELECT snapshot FROM runs WHERE id=$1")
+        .bind(run)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(
+        snapshot["instructions"]
+            .as_str()
+            .unwrap()
+            .contains(snapshot["runtime_context"]["today"].as_str().unwrap())
+    );
+    combined.shutdown().await;
+
+    let mut tiny = config();
+    tiny.agent.max_tool_calls = 1;
+    let (limited, model) = service(store.clone(), "combo", tiny);
+    let run = Uuid::new_v4();
+    limited
+        .submit("tester", Uuid::new_v4(), run, "不能通过批处理绕过预算")
+        .await
+        .unwrap();
+    assert_eq!(
+        terminal(&store, "tester", run).await.reason.as_deref(),
+        Some("budget_exhausted")
+    );
+    assert_eq!(model.calls.load(Ordering::SeqCst), 1);
+    let calls: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM conversation_entries WHERE run_id=$1 AND kind='tool_call'",
+    )
+    .bind(run)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(calls, 0);
+    limited.shutdown().await;
+
+    let mut small = config();
+    small.agent.max_steps = 1;
+    small.agent.history_turns = 1;
+    let (question, model) = service(store.clone(), "mixed_clarify", small.clone());
+    let conversation = Uuid::new_v4();
+    let first = Uuid::new_v4();
+    question
+        .submit("tester", conversation, first, "帮我算住宿费，每天120元。")
+        .await
+        .unwrap();
+    let view = terminal(&store, "tester", first).await;
+    assert_eq!(view.reason.as_deref(), Some("clarification"));
+    assert_eq!(view.status, "completed");
+    assert_eq!(view.activity, "等待澄清");
+    assert!(view.response.unwrap().contains("请确认日期范围"));
+    assert_eq!(model.calls.load(Ordering::SeqCst), 1);
+    let names:Vec<String>=sqlx::query_scalar("SELECT payload->'call'->>'name' FROM conversation_entries WHERE run_id=$1 AND kind='tool_call'").bind(first).fetch_all(&pool).await.unwrap();
+    assert_eq!(names, vec!["clarify"]);
+    question.shutdown().await;
+    // A second clarification retains the original conditions despite history_turns=1.
+    let (question, _) = service(store.clone(), "clarify", small.clone());
+    let second = Uuid::new_v4();
+    question
+        .submit("tester", conversation, second, "还需要什么条件？")
+        .await
+        .unwrap();
+    assert_eq!(
+        terminal(&store, "tester", second).await.reason.as_deref(),
+        Some("clarification")
+    );
+    question.shutdown().await;
+    small.agent.max_steps = 3;
+    let (resumed, model) = service(store.clone(), "resume", small);
+    let third = Uuid::new_v4();
+    resumed
+        .submit(
+            "tester",
+            conversation,
+            third,
+            "2026-10-01到2026-10-15，按日期差14天计费。",
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        terminal(&store, "tester", third).await.response.as_deref(),
+        Some("相差14天，共1680元。")
+    );
+    assert_eq!(model.calls.load(Ordering::SeqCst), 2);
+    resumed.shutdown().await;
     for (mode, reason) in [
         ("error", "model_error"),
         ("slow", "timeout"),

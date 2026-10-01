@@ -399,6 +399,10 @@ export default function App() {
                 className={`agent-message ${message.status === 'failed' ? 'message-error' : ''}`}
               >
                 <span className="sr-only">Calcal：</span>
+                {message.reason === 'clarification' &&
+                  message.id === active.messages.at(-1)?.id && (
+                    <p className="activity-line">等待你补充条件</p>
+                  )}
                 {message.status === 'sending' ? (
                   <div className="activity-line" role="status">
                     <span className="typing" aria-hidden="true">

@@ -1,5 +1,11 @@
 # Cloudflare 部署
 
+## 待部署的日期与计算优化（2026-10-01）
+
+工作区已增加 compute 组合执行、日期条件搜索、运行时日期上下文，以及 clarify 澄清终止/续接和 UI 标记。验证记录见 [执行优化说明](agent-execution.md)。**尚未重启部署生产后端**，没有修改 DNS、Access、Tunnel 或生产聊天数据。现有生产 Rust 仍运行此前版本，新工具与提示词尚未生效。检查脚本已重建 web/dist；若现有进程直接读取该目录，前端静态文件会先更新，不能把前端构建通过当成后端上线。
+
+本次无数据库迁移；工具快照与事件新增 JSON 字段，兼容旧运行记录。上线前保留现有构建/配置并执行生产构建和验收；回退时一起恢复前一版本二进制、前端与 system_config，保留数据库。旧二进制不会理解新增澄清上下文，回退后尚未完成的澄清请用户重述完整问题。
+
 ## Agent 版本状态（2026-09-28）
 
 **已将提交 `8604475` 推送至 `origin/master`，并通过 `scripts/service.sh restart prod` 部署到 https://finanio.app。** 新版包括 Agent Loop、OpenAI、Calculator/Calendar、Postgres JSONB 与 UI 活动记录。下文2026-09-27记录属于旧 Print 版本。

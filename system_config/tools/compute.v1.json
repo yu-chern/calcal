@@ -1,0 +1,383 @@
+{
+  "name": "compute",
+  "version": "1",
+  "binding": "compute.v1",
+  "description": "一次完成批量数学、日期及组合任务。steps按序执行；用变量的value或日期字段中的{ref:\"/此前步骤ID/结果字段\"}引用结果，例如日期差 /span/days 用于公式 days*rate。无需模型在步骤间传递数字。kind=calculate使用有限双精度表达式；kind=calendar做单日期运算；kind=find_dates按条件在有限公历范围内完整搜索，条件数组空表示不限、null表示不限，星期一=1。搜索按距离排序，nearest边界并列全部返回，不能擅自选一个。未命中仅说明指定范围内无解，不能声称永远无解。任一步错误即停止，保留前序结果；complete=false时不得声称全部完成。最多16步，按子步骤消耗工具预算。只提交已明确的计算口径；歧义、冲突先用clarify。",
+  "activity": "正在执行组合计算",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "steps": {
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 16,
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "pattern": "^[A-Za-z0-9_]+$"
+            },
+            "action": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "calculate"
+                      ]
+                    },
+                    "expression": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 512
+                    },
+                    "variables": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32,
+                            "pattern": "^[A-Za-z_]+$",
+                            "description": "变量名仅含英文字母与下划线，不重复、不使用常数名 pi 或 e。"
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "ref": {
+                                    "type": "string",
+                                    "maxLength": 128,
+                                    "description": "仅引用此前成功步骤的结果，JSON pointer 如 /duration/days 或 /total/value。"
+                                  }
+                                },
+                                "required": [
+                                  "ref"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "maxItems": 16
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "expression",
+                    "variables"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "calendar"
+                      ]
+                    },
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "today",
+                        "inspect",
+                        "diff",
+                        "add"
+                      ]
+                    },
+                    "date": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "ref": {
+                                  "type": "string",
+                                  "maxLength": 128,
+                                  "description": "仅引用此前成功步骤的结果，JSON pointer 如 /duration/days 或 /total/value。"
+                                }
+                              },
+                              "required": [
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "start": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "ref": {
+                                  "type": "string",
+                                  "maxLength": 128,
+                                  "description": "仅引用此前成功步骤的结果，JSON pointer 如 /duration/days 或 /total/value。"
+                                }
+                              },
+                              "required": [
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "end": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "ref": {
+                                  "type": "string",
+                                  "maxLength": 128,
+                                  "description": "仅引用此前成功步骤的结果，JSON pointer 如 /duration/days 或 /total/value。"
+                                }
+                              },
+                              "required": [
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "amount": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -100000,
+                              "maximum": 100000
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "ref": {
+                                  "type": "string",
+                                  "maxLength": 128,
+                                  "description": "仅引用此前成功步骤的结果，JSON pointer 如 /duration/days 或 /total/value。"
+                                }
+                              },
+                              "required": [
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "unit": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "days",
+                            "weeks",
+                            "months",
+                            "years"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "operation",
+                    "date",
+                    "start",
+                    "end",
+                    "amount",
+                    "unit"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "find_dates"
+                      ]
+                    },
+                    "query": {
+                      "type": "object",
+                      "properties": {
+                        "anchor": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "description": "明确的参考日期 YYYY-MM-DD；实际今天从运行时上下文获取。"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "ref": {
+                                  "type": "string",
+                                  "maxLength": 128,
+                                  "description": "仅引用此前成功步骤的结果，JSON pointer 如 /duration/days 或 /total/value。"
+                                }
+                              },
+                              "required": [
+                                "ref"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "past",
+                            "future",
+                            "nearest"
+                          ],
+                          "description": "过去、未来、双向距离最近；用户未说明且影响答案时先澄清。"
+                        },
+                        "include_anchor": {
+                          "type": "boolean"
+                        },
+                        "limit": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 16,
+                          "description": "用户所需日期数量；只问最近一个必须为1，不能默认16。nearest并列边界会额外返回同距离候选。"
+                        },
+                        "within_days": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 146097
+                        },
+                        "months": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 12
+                          },
+                          "maxItems": 12
+                        },
+                        "month_days": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 31
+                          },
+                          "maxItems": 31
+                        },
+                        "weekdays": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 7
+                          },
+                          "maxItems": 7
+                        },
+                        "leap_year": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "month_end": {
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "anchor",
+                        "direction",
+                        "include_anchor",
+                        "limit",
+                        "within_days",
+                        "months",
+                        "month_days",
+                        "weekdays",
+                        "leap_year",
+                        "month_end"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "query"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "action"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "steps"
+    ],
+    "additionalProperties": false
+  }
+}
