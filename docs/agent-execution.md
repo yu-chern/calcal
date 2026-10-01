@@ -1,6 +1,6 @@
 # 日期与计算 Agent 执行优化（2026-10-01）
 
-适用范围是已有公历日期、数学表达式与两者组合的任务。目标是在确定口径后减少模型往返，并由确定性工具验证计算；不承诺任意自然语言请求都能全局最优执行或保证模型永不误解。新后端行为尚未部署到公网；前端构建已更新 web/dist。
+适用范围是已有公历日期、数学表达式与两者组合的任务。目标是在确定口径后减少模型往返，并由确定性工具验证计算；不承诺任意自然语言请求都能全局最优执行或保证模型永不误解。代码 dee6d5a 已于2026-10-01重启部署到公网；生产入口及身份保护检查通过，获准身份的UI端到端验收待用户登录完成。
 
 ## 执行策略
 
@@ -111,4 +111,4 @@ CALCAL_LIVE_EVAL=1 CALCAL_LIVE_CASES=ambiguous,clarification_resume cargo test -
 
 ## 部署和兼容
 
-未重启部署生产后端。前端构建已更新 web/dist，现有服务若直接提供此目录会先读到新静态文件；新工具与提示词仍需重启后端才能生效。无 SQL 迁移，既有 JSONB 历史保持不变。新 snapshot.schema_version=2 保存最终 instructions 与 runtime_context；工具事件增加 step/work_units。旧架构报告和已导出的历史 I/O 属于原代码快照，不应当作这次改动后的运行契约。部署与回退边界见 [部署状态](deployment.md)。
+已通过 scripts/service.sh restart prod 部署 dee6d5a；原服务及专用Tunnel已重启，入口和无令牌保护实测通过。当前验收浏览器没有有效Access登录会话，尚未从获准身份完成本次生产UI测试。无 SQL 迁移，既有 JSONB 历史保持不变。新 snapshot.schema_version=2 保存最终 instructions 与 runtime_context；工具事件增加 step/work_units。旧架构报告和已导出的历史 I/O 属于原代码快照，不应当作这次改动后的运行契约。部署与回退边界见 [部署状态](deployment.md)。
