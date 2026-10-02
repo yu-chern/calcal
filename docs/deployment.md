@@ -1,5 +1,26 @@
 # Cloudflare 部署
 
+## 知识回答分支已部署（2026-10-02）
+
+**业务提交`dd31c9f`已推送origin/master，并于柏林时间08:46完成生产核验。** 已通过`scripts/service.sh restart prod`部署到[finanio.app](https://finanio.app)。生产工具为compute v2、clarify v2.1和respond v1；实现见[回答分支](non-computation-replies.md)。问候、已覆盖概念和范围说明正常完成，混合计算仍使用来源绑定程序，历史解释只引用同会话成功计算。下方保留历史记录。
+
+### 验证与生产状态
+
+- Rust fmt/check/test/clippy通过，39项离线单元/API测试通过；5项前端交互测试及格式/lint/类型/构建通过。隔离数据库旧协议及来源验证Agent集成测试通过，新增正常完成、混合计算失败阻断、历史引用与跨会话拒绝检查。未把测试指向生产库。
+- 37类真实模型案例全部通过，初次完整集其中2项发生一次修正重试；补充闰年程序示例后定向回归3项通过。各场景最新记录均为一次模型调用；这是有限模拟案例，不保证任意输入不会重试。40次运行和最新结果见[评估JSON](validation/non-computation-replies.json)。
+- release构建完成后重启，新supervisor PID18866、Rust PID18873；仅监听127.0.0.1:3000。原Tunnel有4条边缘连接，公网DNS正常。未修改DNS、Access或Tunnel配置，无数据库迁移。
+- release SHA-256：`1e920239fd455403167eccac7a1da016d12b4bae922dc1beea9d6e3d4a434bdb`。实际证据保存在未提交的`deploy/runtime/replies-deployment.json`及`deployment.json`。
+- 未登录公网首页、GET /api/session、GET /api/conversations、POST /api/messages均302至langload.cloudflareaccess.com，TLS验证成功。本机API无令牌、伪造邮箱标头和无效JWT均401。
+- 验收浏览器实际显示Calcal Access登录页，没有有效会话；获准身份的生产UI完整往返及未获准邮箱真实登录拒绝本次均未验证。代码与模拟测试不能替代这些公网身份验收。
+
+### 备份与回退
+
+部署前与重启前均确认生产运行中任务为0。备份`deploy/runtime/backups/20261002-084253-replies/`包含经pg_restore --list检查的数据库归档、旧二进制、前端产物、HEAD源码和对应system_config，以及旧部署元数据。
+
+回退源码版本`565daa4`（对应业务`8b322fc`）：恢复其源码与system_config，再重启生产；保留.env、数据库、Tunnel和其他未提交工作。旧二进制SHA-256为`99405e0e795c2a0073fea5c9f5732240e07e424cd2f403f4d5fa605742cc86b6`。本次没有迁移，应用回退通常不需要恢复数据库。旧版不支持respond分支。
+
+建议刷新手机页面后分别测试“Hi”“什么是闰年”“解释公历闰年规则并判断2024年是否闰年”；计算0.1+0.2后追问“刚才是怎么算的”；以及未明确方向的“最近一个闰年”，确认只有实际歧义显示等待补充条件。
+
 ## 来源绑定计算版本已部署（2026-10-01）
 
 **业务提交`8b322fc`已推送到origin/master，并于柏林时间23:59完成生产核验。** 已通过`scripts/service.sh restart prod`部署到https://finanio.app，生产工具为compute v2与clarify v2；实现见[协议说明](verified-computation.md)。下方章节保留历史版本记录。
