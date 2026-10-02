@@ -1,6 +1,6 @@
 {
   "name": "clarify",
-  "version": "2",
+  "version": "2.1",
   "binding": "clarification.v2",
   "description": "选择澄清主题，服务器生成问题和选项并结束本轮等待用户回复。source与quote都为null，或引用编号用户原文的完整片段帮助说明待确认条件。禁止提交模型自由编写的计算结论。",
   "activity": "正在确认计算条件",
@@ -22,7 +22,6 @@
           "precision",
           "timezone",
           "tie",
-          "unsupported",
           "conditions"
         ]
       },

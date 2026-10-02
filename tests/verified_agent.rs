@@ -232,4 +232,110 @@ async fn verified_answers_fail_closed_repair_and_resume() {
         .unwrap();
     assert!(terminal(&store, &owner, id).await.response.is_none());
     agent.shutdown().await;
+    // Knowledge replies end normally; unrelated raw prose cannot escape the protocol.
+    let (agent, model) = service(
+        &store,
+        vec![turn(
+            vec![call(
+                "respond",
+                json!({"topics":["greeting"],"program":null,"reference":null}),
+            )],
+            "虚构计算结果999",
+        )],
+        1,
+    )
+    .await;
+    let id = Uuid::new_v4();
+    agent
+        .submit(&owner, Uuid::new_v4(), id, "Hi")
+        .await
+        .unwrap();
+    let v = terminal(&store, &owner, id).await;
+    assert_eq!(v.reason.as_deref(), Some("completed"));
+    assert!(v.response.unwrap().starts_with("你好"));
+    assert_eq!(model.calls.load(Ordering::SeqCst), 1);
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM conversation_entries WHERE run_id=$1 AND kind='response_verified'",
+    )
+    .bind(id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(n, 1);
+    agent.shutdown().await;
+    // Mixed replies cannot show even their knowledge section if computation fails.
+    for valid in [true, false] {
+        let mut p = program();
+        if !valid {
+            p["steps"][0]["expression"] = json!("999");
+        }
+        let (agent, _) = service(
+            &store,
+            vec![turn(
+                vec![call(
+                    "respond",
+                    json!({"topics":["precision"],"program":p,"reference":null}),
+                )],
+                "",
+            )],
+            1,
+        )
+        .await;
+        let id = Uuid::new_v4();
+        agent
+            .submit(&owner, Uuid::new_v4(), id, "计算0.1+0.2，并解释精度")
+            .await
+            .unwrap();
+        let v = terminal(&store, &owner, id).await;
+        assert_eq!(v.response.is_some(), valid);
+        if valid {
+            assert!(v.response.unwrap().contains("0.3"));
+        }
+        agent.shutdown().await;
+    }
+    // References must be successful tool-backed computations in the same conversation.
+    let conversation = Uuid::new_v4();
+    let computation = call("compute", program());
+    let call_id = computation.id.clone();
+    let (agent, _) = service(&store, vec![turn(vec![computation], "")], 1).await;
+    let previous = Uuid::new_v4();
+    agent
+        .submit(&owner, conversation, previous, "计算0.1+0.2")
+        .await
+        .unwrap();
+    assert_eq!(
+        terminal(&store, &owner, previous).await.reason.as_deref(),
+        Some("completed")
+    );
+    agent.shutdown().await;
+    for same in [true, false] {
+        let (agent, _) = service(
+            &store,
+            vec![turn(
+                vec![call(
+                    "respond",
+                    json!({"topics":[],"program":null,"reference":format!("{previous}:{call_id}")}),
+                )],
+                "",
+            )],
+            1,
+        )
+        .await;
+        let id = Uuid::new_v4();
+        agent
+            .submit(
+                &owner,
+                if same { conversation } else { Uuid::new_v4() },
+                id,
+                "刚才怎么算的？",
+            )
+            .await
+            .unwrap();
+        let v = terminal(&store, &owner, id).await;
+        assert_eq!(v.response.is_some(), same);
+        if same {
+            assert!(v.response.unwrap().contains("结果：0.3"));
+        }
+        agent.shutdown().await;
+    }
 }

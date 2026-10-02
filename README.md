@@ -1,6 +1,6 @@
 # Calcal
 
-个人轻量 Agent 实验项目：React 手机聊天界面 + Rust Agent Loop + Postgres JSONB 对话记录。模型适配器使用 OpenAI Responses API，生产工具为 compute v2 与 clarify v2。模型绑定用户原文并生成受限计算程序，Rust 校验来源、执行数学/日期/列表运算并直接呈现成功结果。自由文本计算答案不能绕过后端校验。详见 [来源绑定计算协议](docs/verified-computation.md)。
+个人轻量 Agent 实验项目：React 手机聊天界面 + Rust Agent Loop + Postgres JSONB 对话记录。模型适配器使用 OpenAI Responses API，生产工具为 compute v2、clarify v2 与 respond v1。模型绑定用户原文并生成受限计算程序，Rust 校验来源、执行数学/日期/列表运算并直接呈现成功结果。自由文本计算答案不能绕过后端校验。问候、能力介绍与已覆盖概念使用后端知识条目正常结束；混合问题仍执行计算程序，解释历史计算只能引用同会话成功记录。详见 [回答分支](docs/non-computation-replies.md)及[来源绑定计算协议](docs/verified-computation.md)。
 
 UI 在运行时显示“正在分析问题”“正在查询日期”“正在计算”等真实步骤，完成后可展开执行记录。它不显示模型内部推理，也不把提交成功当作模型回答。
 

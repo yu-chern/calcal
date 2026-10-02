@@ -7,6 +7,7 @@ fn context(text: &str) -> ToolContext {
         timezone: chrono_tz::Europe::Berlin,
         sources: vec![text.into()],
         selections: BTreeMap::new(),
+        verified_answers: BTreeMap::new(),
     }
 }
 fn input(id: &str, quote: &str, kind: &str) -> Value {

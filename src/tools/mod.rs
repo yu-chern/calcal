@@ -6,6 +6,7 @@ pub use clarification_v2::selection as clarification_selection;
 mod compute;
 mod date_search;
 mod program;
+mod reply;
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -30,6 +31,8 @@ pub struct ToolContext {
     /// User messages only, numbered in the model instructions.
     pub sources: Vec<String>,
     pub selections: BTreeMap<usize, String>,
+    /// Successful computed answers from this conversation only.
+    pub verified_answers: BTreeMap<String, Value>,
 }
 #[async_trait]
 pub trait Tool: Send + Sync {
@@ -107,6 +110,7 @@ impl ToolRegistry {
             ("calendar.v1", Arc::new(calendar::Calendar) as Arc<dyn Tool>),
             ("compute.v1", Arc::new(compute::Compute) as Arc<dyn Tool>),
             ("compute.v2", Arc::new(program::Program) as Arc<dyn Tool>),
+            ("respond.v1", Arc::new(reply::Reply) as Arc<dyn Tool>),
             (
                 "clarification.v2",
                 Arc::new(clarification_v2::Clarification) as Arc<dyn Tool>,
@@ -135,13 +139,16 @@ impl ToolRegistry {
             .definitions()
             .iter()
             .any(|d| d.binding == "compute.v2")
-            && registry
-                .definitions()
-                .iter()
-                .any(|d| !matches!(d.binding.as_str(), "compute.v2" | "clarification.v2"))
+            && registry.definitions().iter().any(|d| {
+                !matches!(
+                    d.binding.as_str(),
+                    "compute.v2" | "clarification.v2" | "respond.v1"
+                )
+            })
         {
             return Err(
-                "来源验证模式只能注册compute.v2与clarification.v2，禁止旧工具绕过验证".into(),
+                "来源验证模式只能注册compute.v2、clarification.v2与respond.v1，禁止旧工具绕过验证"
+                    .into(),
             );
         }
         Ok(registry)
@@ -167,7 +174,7 @@ impl ToolRegistry {
                 if data.to_string().len() <= 16000
                     && matches!(
                         tool.definition.binding.as_str(),
-                        "compute.v1" | "compute.v2"
+                        "compute.v1" | "compute.v2" | "respond.v1"
                     )
                     && data["complete"] == false =>
             {
@@ -207,6 +214,7 @@ mod tests {
             timezone: chrono_tz::Europe::Berlin,
             sources: vec![],
             selections: BTreeMap::new(),
+            verified_answers: BTreeMap::new(),
         };
         let args = json!({"expression":"(12 + 3) * 4"});
         assert_eq!(

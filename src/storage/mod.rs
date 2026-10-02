@@ -293,6 +293,22 @@ impl Store {
             activities,
         })
     }
+    /// Only completed computation events paired with successful tool evidence,
+    /// scoped to this conversation and strictly before the current request.
+    pub async fn verified_answers(
+        &self,
+        conversation: Uuid,
+        current: Uuid,
+    ) -> Result<Vec<Value>, StoreError> {
+        let rows = sqlx::query("SELECT r.id, a.payload AS answer, t.payload->'result'->'data' AS program FROM runs r JOIN conversation_entries a ON a.run_id=r.id AND a.kind='answer_verified' JOIN conversation_entries t ON t.run_id=r.id AND t.kind='tool_result' AND t.payload->>'call_id'=a.payload->>'call_id' WHERE r.conversation_id=$1 AND r.status='completed' AND r.reason='completed' AND r.created_at < (SELECT created_at FROM runs WHERE id=$2 AND conversation_id=$1) AND t.payload->'result'->'ok'='true'::jsonb AND t.payload->'result'->'data'->'complete'='true'::jsonb ORDER BY r.created_at DESC, a.sequence DESC LIMIT 3")
+            .bind(conversation).bind(current).fetch_all(&self.pool).await?;
+        Ok(rows.into_iter().map(|row| {
+            let run: Uuid = row.get("id");
+            let answer: Value = row.get("answer");
+            let program: Value = row.get("program");
+            json!({"key":format!("{}:{}",run,answer["call_id"].as_str().unwrap_or_default()),"run_id":run,"call_id":answer["call_id"],"text":answer["text"],"claims":answer["claims"],"program":program})
+        }).collect())
+    }
     pub async fn history(
         &self,
         conversation: Uuid,

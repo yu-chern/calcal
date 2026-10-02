@@ -36,6 +36,91 @@ async fn date_math_and_clarification_live_evaluation() {
     let agent = AgentService::new(store.clone(), config, model, tools);
     let owner = format!("live-eval-{}", Uuid::new_v4());
     let cases = [
+        ("greeting", "Hi", "completed", vec!["你好"], Some("respond")),
+        (
+            "capabilities",
+            "你能做些什么？",
+            "completed",
+            vec!["日期", "运算"],
+            Some("respond"),
+        ),
+        (
+            "thanks",
+            "谢谢",
+            "completed",
+            vec!["不客气"],
+            Some("respond"),
+        ),
+        (
+            "scope",
+            "帮我写一首爱情诗",
+            "completed",
+            vec!["范围"],
+            Some("respond"),
+        ),
+        (
+            "leap_concept",
+            "什么是闰年，为什么需要闰年？",
+            "completed",
+            vec!["公历", "规则"],
+            Some("respond"),
+        ),
+        (
+            "calendar_concept",
+            "公历和中国农历有何区别？",
+            "completed",
+            vec!["阴阳合历"],
+            Some("respond"),
+        ),
+        (
+            "difference_concept",
+            "日期差和首尾计入有何区别？",
+            "completed",
+            vec!["首尾"],
+            Some("respond"),
+        ),
+        (
+            "rounding_concept",
+            "舍入与精确计算的区别是什么？",
+            "completed",
+            vec!["舍入", "精确"],
+            Some("respond"),
+        ),
+        (
+            "unsupported_calendar",
+            "帮我将2026年10月1日换算为农历",
+            "completed",
+            vec!["范围"],
+            Some("respond"),
+        ),
+        (
+            "mixed_leap",
+            "解释公历闰年规则，并判断2024年是否闰年",
+            "completed",
+            vec!["规则", "是"],
+            Some("respond"),
+        ),
+        (
+            "mixed_math",
+            "解释算术平均值，并算出1、2、3的平均值",
+            "completed",
+            vec!["平均值", "2"],
+            Some("respond"),
+        ),
+        (
+            "explanation_seed",
+            "计算0.1+0.2",
+            "completed",
+            vec!["0.3"],
+            Some("compute"),
+        ),
+        (
+            "explanation_followup",
+            "刚才是怎么算的？解释一下",
+            "completed",
+            vec!["已验证", "0.3"],
+            Some("respond"),
+        ),
         (
             "today",
             "今天的实际日期是哪一天？只说日期。",
@@ -201,6 +286,7 @@ async fn date_math_and_clarification_live_evaluation() {
     let mut failures = vec![];
     let clarification_conversation = Uuid::new_v4();
     let numbered_conversation = Uuid::new_v4();
+    let explanation_conversation = Uuid::new_v4();
     for (name, prompt, reason, expected, tool) in cases.into_iter().chain(std::iter::once((
         "clarification_resume",
         "只向过去找，以2026年10月1日为参考。",
@@ -213,7 +299,9 @@ async fn date_math_and_clarification_live_evaluation() {
         {
             continue;
         }
-        let conversation = if matches!(name, "numbered_question" | "numbered_resume") {
+        let conversation = if matches!(name, "explanation_seed" | "explanation_followup") {
+            explanation_conversation
+        } else if matches!(name, "numbered_question" | "numbered_resume") {
             numbered_conversation
         } else if matches!(name, "ambiguous" | "clarification_resume") {
             clarification_conversation
@@ -261,7 +349,7 @@ async fn date_math_and_clarification_live_evaluation() {
                 s.contains(snapshot["runtime_context"]["today"].as_str().unwrap())
             });
         let verified: Vec<Value> = sqlx::query_scalar(
-            "SELECT payload FROM conversation_entries WHERE run_id=$1 AND kind='answer_verified'",
+            "SELECT payload FROM conversation_entries WHERE run_id=$1 AND kind IN ('answer_verified','response_verified')",
         )
         .bind(id)
         .fetch_all(&pool)

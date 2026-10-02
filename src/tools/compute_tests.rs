@@ -17,6 +17,7 @@ fn context() -> ToolContext {
         timezone: chrono_tz::Europe::Berlin,
         sources: vec![],
         selections: std::collections::BTreeMap::new(),
+        verified_answers: Default::default(),
     }
 }
 async fn run(args: Value) -> Value {

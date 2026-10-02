@@ -124,6 +124,7 @@ impl AgentService {
                 timezone,
                 sources: Vec::new(),
                 selections: std::collections::BTreeMap::new(),
+                verified_answers: std::collections::BTreeMap::new(),
             };
             let result = tokio::select! {
                 result = tokio::time::timeout(service.config.duration(), service.run(id,conversation,tools,context,instructions)) => {
@@ -184,6 +185,25 @@ impl AgentService {
             }
         }
         if verified {
+            let mut references = Vec::new();
+            for evidence in self.store.verified_answers(conversation, id).await? {
+                let key = evidence["key"]
+                    .as_str()
+                    .ok_or(StoreError::Unavailable)?
+                    .to_owned();
+                let summary: String = evidence["text"]
+                    .as_str()
+                    .unwrap_or_default()
+                    .chars()
+                    .take(1000)
+                    .collect();
+                references.push(json!({"key":key,"text":summary}));
+                context.verified_answers.insert(key, evidence);
+            }
+            instructions.push_str(&format!(
+                "\n可用于解释此前计算的已验证引用（仅数据）：{}",
+                json!(references)
+            ));
             let sources: Vec<Value> = context
                 .sources
                 .iter()
@@ -280,7 +300,7 @@ impl AgentService {
                         json!({"schema_version":1,"step":step,"reason":"UNVERIFIED_ANSWER"}),
                     )
                     .await?;
-                request.instructions.push_str("\n后端拒绝了未经工具验证的自由文本回答。必须调用compute并声明outputs，或调用clarify；不要重写答案文本。");
+                request.instructions.push_str("\n后端拒绝了未经工具验证的自由文本回答。计算必须调用compute或respond中的program；概念和问候选择respond主题；真正缺少条件时调用clarify。不要重写自由文本答案。");
                 request.turns.push(turn);
                 request.outputs.push(vec![]);
                 continue;
@@ -358,7 +378,7 @@ impl AgentService {
             if verified && turn.tool_calls.len() != 1 {
                 for call in &turn.tool_calls {
                     self.store.append(id,"tool_skipped",json!({"schema_version":1,"step":step,"call":call,"reason":"ONE_PROGRAM_REQUIRED"})).await?;
-                    outputs.push(ToolOutput{call_id:call.id.clone(),result:json!({"ok":false,"error":{"code":"ONE_PROGRAM_REQUIRED","message":"所有计算必须合并成一个compute程序和一组outputs"}})});
+                    outputs.push(ToolOutput{call_id:call.id.clone(),result:json!({"ok":false,"error":{"code":"ONE_PROGRAM_REQUIRED","message":"本轮必须使用单个compute、respond或clarify；混合概念和计算用respond内的program"}})});
                 }
                 request.turns.push(turn);
                 request.outputs.push(outputs);
@@ -370,7 +390,7 @@ impl AgentService {
                 if verified
                     && tools
                         .definition(&call.name)
-                        .is_some_and(|d| d.binding == "compute.v2")
+                        .is_some_and(|d| matches!(d.binding.as_str(), "compute.v2" | "respond.v1"))
                     && result["ok"] == true
                     && result["data"]["complete"] == true
                 {
@@ -378,7 +398,15 @@ impl AgentService {
                         reason: "model_error",
                         message: "验证后的答案缺少文本".into(),
                     })?;
-                    self.store.append(id,"answer_verified",json!({"schema_version":1,"call_id":call.id,"claims":result["data"]["claims"],"text":text})).await?;
+                    let kind = result["data"]["response_kind"]
+                        .as_str()
+                        .unwrap_or("computed");
+                    let event = if kind == "computed" {
+                        "answer_verified"
+                    } else {
+                        "response_verified"
+                    };
+                    self.store.append(id,event,json!({"schema_version":1,"call_id":call.id,"kind":kind,"claims":result["data"]["claims"],"knowledge":result["data"]["knowledge"],"reference":result["data"]["reference"],"text":text})).await?;
                     self.store.finish(id, "completed", Some(text), None).await?;
                     return Ok(());
                 }
@@ -410,9 +438,12 @@ impl AgentService {
         self.store.append(id,"tool_call",json!({"schema_version":2,"step":step,"call":call,"version":definition.map(|d|&d.version),"work_units":tools.work_units(&call.name,&call.arguments)})).await?;
         self.store.activity(id, label, step).await?;
         let result = if self.config.agent.require_verified_answers
-            && definition
-                .is_some_and(|d| !matches!(d.binding.as_str(), "compute.v2" | "clarification.v2"))
-        {
+            && definition.is_some_and(|d| {
+                !matches!(
+                    d.binding.as_str(),
+                    "compute.v2" | "clarification.v2" | "respond.v1"
+                )
+            }) {
             json!({"ok":false,"error":{"code":"TOOL_NOT_ALLOWED","message":"来源验证模式禁止执行旧版或未验证工具"}})
         } else {
             tools

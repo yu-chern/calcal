@@ -135,6 +135,7 @@ mod tests {
             timezone: chrono_tz::Europe::Berlin,
             sources: vec![],
             selections: std::collections::BTreeMap::new(),
+            verified_answers: Default::default(),
         };
         assert_eq!(
             Calendar

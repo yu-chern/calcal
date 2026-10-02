@@ -1,0 +1,773 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "medium",
+  "environment": "isolated calcal_test; not production",
+  "method": "37-case full suite, followed by 3 targeted cases after adding explicit leap-year program guidance; cases are latest result per scenario",
+  "passed": 37,
+  "total_runs": 40,
+  "cases": [
+    {
+      "elapsed_ms": 1874,
+      "llm_calls": 1,
+      "name": "greeting",
+      "pass": true,
+      "reason": "completed",
+      "response": "你好！我可以帮你查询公历日期、进行常见数学运算，也可以解释相关概念。你想了解什么？",
+      "run_id": "d23af0e0-881f-48c8-afb3-2bf6d2163295",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1581,
+      "llm_calls": 1,
+      "name": "capabilities",
+      "pass": true,
+      "reason": "completed",
+      "response": "我可以查询日期和星期、计算日期差与日期偏移、搜索符合条件的日期，进行常见数学运算，以及把日期和计算组合起来。也可以解释闰年、百分比、舍入等概念。有会影响答案的歧义时，我会先确认。具体计算会交给工具执行。",
+      "run_id": "b366928b-fb27-41d9-92e8-ff5619c3c49a",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1582,
+      "llm_calls": 1,
+      "name": "thanks",
+      "pass": true,
+      "reason": "completed",
+      "response": "不客气！有其他日期或计算问题，随时告诉我。",
+      "run_id": "0ce08d8e-6280-4bd7-9e6f-48eafe829f77",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2002,
+      "llm_calls": 1,
+      "name": "scope",
+      "pass": true,
+      "reason": "completed",
+      "response": "我主要帮助处理公历日期、常见数学运算及相关概念。这项请求超出了当前服务范围；你也可以换一个日期或计算问题。",
+      "run_id": "b23c925a-2b3f-49a0-aeae-ac22859ffafb",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1468,
+      "llm_calls": 1,
+      "name": "leap_concept",
+      "pass": true,
+      "reason": "completed",
+      "response": "闰年是在历法中增加一天或一个月，以协调历法与天文周期的年份。在公历中，增加的那一天放在二月。公历判定规则是：年份能被4整除且不能被100整除，或者能被400整除。判断某个具体年份是否满足规则，需要执行日期工具。",
+      "run_id": "7b2278fd-941d-4e5d-b1e7-66a0a860a8e4",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1358,
+      "llm_calls": 1,
+      "name": "calendar_concept",
+      "pass": true,
+      "reason": "completed",
+      "response": "公历属于太阳历，年份与季节周期相协调。中国农历属于阴阳合历：月份依据月相周期，年份通过闰月等规则与季节协调，所以它并非单纯的阴历。我可以解释这些概念；具体农历日期转换或节日日期查询需要相应的历法数据，当前工具未提供。",
+      "run_id": "ca0f64a7-dabb-4115-84f3-7c644b406bae",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1575,
+      "llm_calls": 1,
+      "name": "difference_concept",
+      "pass": true,
+      "reason": "completed",
+      "response": "日期差通常指结束日期减去开始日期，表示相隔的日历天数。它与把日期逐个计入的天数不同；如果是计费或统计，需要明确是否计入首尾日期。跨时区或夏令时变化时，日历日期差也不能直接当成实际经过的小时数。\n\n“包含首尾”表示开始日期和结束日期都计入统计；“相差多少天”通常按结束日期减开始日期。计费等任务需要明确这两种口径，不能把它们混用。具体天数和费用应由工具计算。",
+      "run_id": "b895d20b-fa63-4cf5-b6cc-4d2ca2165d44",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1886,
+      "llm_calls": 1,
+      "name": "rounding_concept",
+      "pass": true,
+      "reason": "completed",
+      "response": "舍入需要同时确定保留位数和规则。常见规则包括四舍五入、向下取整和向上取整。恰好在中点时，不同的四舍五入约定也可能不同；本工具采用中点远离零。计算过程中何时舍入也应明确。\n\n精确计算与近似计算的区别在于数值如何表示和执行。当前工具对有范围限制的整数、有限小数和分数使用精确有理数运算；非终止小数可以保留为分数。部分平方根、三角函数、指数和对数采用明确标记的近似值。超出精确范围时会报错，不会默默改成近似值。",
+      "run_id": "c3fd96a5-83ca-4ce2-9720-e0a5e477c64c",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1051,
+      "llm_calls": 1,
+      "name": "unsupported_calendar",
+      "pass": true,
+      "reason": "completed",
+      "response": "我主要帮助处理公历日期、常见数学运算及相关概念。这项请求超出了当前服务范围；你也可以换一个日期或计算问题。",
+      "run_id": "4355307a-16d7-4ca9-8d47-5b2360fe3762",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1869,
+      "llm_calls": 1,
+      "name": "mixed_leap",
+      "pass": true,
+      "reason": "completed",
+      "response": "闰年是在历法中增加一天或一个月，以协调历法与天文周期的年份。在公历中，增加的那一天放在二月。公历判定规则是：年份能被4整除且不能被100整除，或者能被400整除。判断某个具体年份是否满足规则，需要执行日期工具。\n\n结果：是",
+      "run_id": "631a7df4-7fe8-4b14-bfcf-1903572501d6",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-recheck.log"
+    },
+    {
+      "elapsed_ms": 1369,
+      "llm_calls": 1,
+      "name": "mixed_math",
+      "pass": true,
+      "reason": "completed",
+      "response": "算术平均值是各个数值之和除以数值个数。加权平均值则要把各个数值与对应权重结合起来，并按权重总量计算。空集合没有算术平均值；遇到缺失数据时，需要先明确处理规则。\n\n平均值：2",
+      "run_id": "60d951f3-0afa-42c5-9cb7-b28752752b13",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2094,
+      "llm_calls": 1,
+      "name": "explanation_seed",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：0.3",
+      "run_id": "d4ed8243-bf34-4be0-9e3b-e9865b0defc3",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2404,
+      "llm_calls": 1,
+      "name": "explanation_followup",
+      "pass": true,
+      "reason": "completed",
+      "response": "我先理解你的条件，把会影响答案的歧义问清，再把明确的任务交给计算工具。派生数值、日期、筛选和比较由工具执行，最终计算结论来自成功结果。模型选择公式和条件仍可能理解错误，所以条件和口径需要说清楚。\n\n这段说明引用此前已成功执行的计算结果。\n步骤1：执行已记录的计算步骤。\n已验证的结果：\n结果：0.3",
+      "run_id": "890fb1d1-9b6f-4ead-83df-17765092d27a",
+      "tools": [
+        "respond"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1673,
+      "llm_calls": 1,
+      "name": "today",
+      "pass": true,
+      "reason": "completed",
+      "response": "日期：2026-10-02（星期五）",
+      "run_id": "9f677c06-87d8-4b1a-880c-b2f8731969de",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2091,
+      "llm_calls": 1,
+      "name": "arithmetic",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：309",
+      "run_id": "6b12bfda-74df-4042-9c04-02d74508e672",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2617,
+      "llm_calls": 1,
+      "name": "batch_math",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：12\n结果：120\n结果：1024",
+      "run_id": "4d946fb4-1d66-45e6-8e9d-fd443a473c35",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1782,
+      "llm_calls": 1,
+      "name": "date_math",
+      "pass": true,
+      "reason": "completed",
+      "response": "相差天数：14 天\n合计：1680 元",
+      "run_id": "fd9637ca-7224-4ba4-980f-796483869745",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2715,
+      "llm_calls": 1,
+      "name": "date_search",
+      "pass": true,
+      "reason": "completed",
+      "response": "日期：2008-02-29（星期五）\n搜索口径：以 2026-10-01 为参考，向过去，最多检查 146097 天，不包含参考日。",
+      "run_id": "df215d2f-46d8-4616-83fd-673d06e945f1",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2625,
+      "llm_calls": 1,
+      "name": "ambiguous",
+      "pass": true,
+      "reason": "clarification",
+      "response": "你提供的条件：「最近」\n“最近”采用哪种方向和距离口径？\n1. 只向过去找\n2. 只向未来找\n3. 前后比较，按实际日期相差天数取最近",
+      "run_id": "743aca0e-cabf-4ce2-b22e-928b1f4fbbfe",
+      "tools": [
+        "clarify"
+      ],
+      "source_log": "calcal-replies-recheck.log"
+    },
+    {
+      "elapsed_ms": 1984,
+      "llm_calls": 1,
+      "name": "conflicting",
+      "pass": true,
+      "reason": "clarification",
+      "response": "你提供的条件：「日期必须既在2026年10月1日之前，又在2026年10月15日之后」\n这些条件存在冲突，请说明应保留或修改哪些条件。",
+      "run_id": "01c187e3-9f20-488d-9949-492cac0ea029",
+      "tools": [
+        "clarify"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1783,
+      "llm_calls": 1,
+      "name": "month_end",
+      "pass": true,
+      "reason": "clarification",
+      "response": "你提供的条件：「2026年1月31日加一个月」\n月份或年份偏移可能遇到不存在的日期，请确认处理规则。\n1. 使用目标月份的最后一天\n2. 超出的天数向后顺延\n3. 保留原日期要求，遇到不存在的日期就说明无法得到该日期",
+      "run_id": "5cb0663a-e53f-40c2-8873-9683ce2d09c9",
+      "tools": [
+        "clarify"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1470,
+      "llm_calls": 1,
+      "name": "precision",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：9007199254740994",
+      "run_id": "b1baec7d-40a7-4014-ae28-e26c87e5398e",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1578,
+      "llm_calls": 1,
+      "name": "exact_decimal",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：0.3",
+      "run_id": "f7e875d6-d3cf-4e3e-815b-82e9ff91fd02",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1562,
+      "llm_calls": 1,
+      "name": "fraction",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：0.5",
+      "run_id": "2ed98c1c-5ea9-4924-bb2b-7f20b984cdb4",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1460,
+      "llm_calls": 1,
+      "name": "rounding",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：2.68",
+      "run_id": "ab12ad4c-08b6-49b6-a07f-85378ae05bb9",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2608,
+      "llm_calls": 1,
+      "name": "list_math",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：55",
+      "run_id": "ca4a1662-1076-413e-bf66-9286fa5d9bc3",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 3349,
+      "llm_calls": 1,
+      "name": "date_filter",
+      "pass": true,
+      "reason": "completed",
+      "response": "合计：600 元",
+      "run_id": "b6474f47-81d5-45fc-b422-3f80a8ee750e",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1888,
+      "llm_calls": 1,
+      "name": "discount",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：96 元",
+      "run_id": "1ad1dc99-1b47-4bdc-9bcf-374fbb4f5153",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1775,
+      "llm_calls": 1,
+      "name": "future_offset",
+      "pass": true,
+      "reason": "completed",
+      "response": "日期：2024-02-29（星期四）",
+      "run_id": "437265db-56de-49be-9234-0436c870f7ea",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1879,
+      "llm_calls": 1,
+      "name": "confirmed_month_end",
+      "pass": true,
+      "reason": "completed",
+      "response": "日期：2026-02-28（星期六）",
+      "run_id": "4c2acce3-1614-4537-8126-513d243c3f46",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2092,
+      "llm_calls": 1,
+      "name": "linear_equation",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：4",
+      "run_id": "7feeb9ad-f7ee-4ade-b9cf-b7d1e81a9501",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1670,
+      "llm_calls": 1,
+      "name": "comparison",
+      "pass": true,
+      "reason": "completed",
+      "response": "条件是否成立：是",
+      "run_id": "a9fc13cd-0eb8-46f0-b56b-12ab904199ce",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1577,
+      "llm_calls": 1,
+      "name": "injection",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：342",
+      "run_id": "9464bc97-605b-40f0-a85d-d54ee9f5bc28",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 1355,
+      "llm_calls": 1,
+      "name": "zero_division",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：无法得到数值：除数不能为零。",
+      "run_id": "8ea05b34-b767-4a28-a160-6b37ae5ffb49",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 2099,
+      "llm_calls": 1,
+      "name": "numbered_question",
+      "pass": true,
+      "reason": "clarification",
+      "response": "你提供的条件：「最近的闰年且二月最后一天为周五」\n“最近”采用哪种方向和距离口径？\n1. 只向过去找\n2. 只向未来找\n3. 前后比较，按实际日期相差天数取最近",
+      "run_id": "46c8b3ef-ece4-4096-b76e-f4e03b32ffc0",
+      "tools": [
+        "clarify"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 3444,
+      "llm_calls": 1,
+      "name": "numbered_resume",
+      "pass": true,
+      "reason": "completed",
+      "response": "日期：2036-02-29（星期五）\n搜索口径：以 2028-10-28 为参考，前后按实际天数距离比较，最多检查 146097 天，不包含参考日。",
+      "run_id": "93ced371-0376-43ec-814c-2ec1dfdb0667",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "elapsed_ms": 6057,
+      "llm_calls": 1,
+      "name": "clarification_resume",
+      "pass": true,
+      "reason": "completed",
+      "response": "结果：2008\n日期搜索范围：以 2026-10-01 为参考，向过去，最多检查 146097 天。",
+      "run_id": "1126d795-548a-4ebe-b142-87504b08629f",
+      "tools": [
+        "compute"
+      ],
+      "source_log": "calcal-replies-recheck.log"
+    }
+  ],
+  "attempts": [
+    {
+      "name": "greeting",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "d23af0e0-881f-48c8-afb3-2bf6d2163295",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "capabilities",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "b366928b-fb27-41d9-92e8-ff5619c3c49a",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "thanks",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "0ce08d8e-6280-4bd7-9e6f-48eafe829f77",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "scope",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "b23c925a-2b3f-49a0-aeae-ac22859ffafb",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "leap_concept",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "7b2278fd-941d-4e5d-b1e7-66a0a860a8e4",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "calendar_concept",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "ca0f64a7-dabb-4115-84f3-7c644b406bae",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "difference_concept",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "b895d20b-fa63-4cf5-b6cc-4d2ca2165d44",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "rounding_concept",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "c3fd96a5-83ca-4ce2-9720-e0a5e477c64c",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "unsupported_calendar",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "4355307a-16d7-4ca9-8d47-5b2360fe3762",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "mixed_leap",
+      "pass": true,
+      "llm_calls": 2,
+      "run_id": "d1198121-fdb7-4512-a007-79925b8f6f66",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "mixed_math",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "60d951f3-0afa-42c5-9cb7-b28752752b13",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "explanation_seed",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "d4ed8243-bf34-4be0-9e3b-e9865b0defc3",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "explanation_followup",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "890fb1d1-9b6f-4ead-83df-17765092d27a",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "today",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "9f677c06-87d8-4b1a-880c-b2f8731969de",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "arithmetic",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "6b12bfda-74df-4042-9c04-02d74508e672",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "batch_math",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "4d946fb4-1d66-45e6-8e9d-fd443a473c35",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "date_math",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "fd9637ca-7224-4ba4-980f-796483869745",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "date_search",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "df215d2f-46d8-4616-83fd-673d06e945f1",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "ambiguous",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "15a7eeac-c4d8-45c6-a650-a6fca18c346a",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "conflicting",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "01c187e3-9f20-488d-9949-492cac0ea029",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "month_end",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "5cb0663a-e53f-40c2-8873-9683ce2d09c9",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "precision",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "b1baec7d-40a7-4014-ae28-e26c87e5398e",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "exact_decimal",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "f7e875d6-d3cf-4e3e-815b-82e9ff91fd02",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "fraction",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "2ed98c1c-5ea9-4924-bb2b-7f20b984cdb4",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "rounding",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "ab12ad4c-08b6-49b6-a07f-85378ae05bb9",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "list_math",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "ca4a1662-1076-413e-bf66-9286fa5d9bc3",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "date_filter",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "b6474f47-81d5-45fc-b422-3f80a8ee750e",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "discount",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "1ad1dc99-1b47-4bdc-9bcf-374fbb4f5153",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "future_offset",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "437265db-56de-49be-9234-0436c870f7ea",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "confirmed_month_end",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "4c2acce3-1614-4537-8126-513d243c3f46",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "linear_equation",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "7feeb9ad-f7ee-4ade-b9cf-b7d1e81a9501",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "comparison",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "a9fc13cd-0eb8-46f0-b56b-12ab904199ce",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "injection",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "9464bc97-605b-40f0-a85d-d54ee9f5bc28",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "zero_division",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "8ea05b34-b767-4a28-a160-6b37ae5ffb49",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "numbered_question",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "46c8b3ef-ece4-4096-b76e-f4e03b32ffc0",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "numbered_resume",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "93ced371-0376-43ec-814c-2ec1dfdb0667",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "clarification_resume",
+      "pass": true,
+      "llm_calls": 2,
+      "run_id": "df7a74f0-f410-47eb-93e8-76e95e876a5e",
+      "source_log": "calcal-replies-live.log"
+    },
+    {
+      "name": "mixed_leap",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "631a7df4-7fe8-4b14-bfcf-1903572501d6",
+      "source_log": "calcal-replies-recheck.log"
+    },
+    {
+      "name": "ambiguous",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "743aca0e-cabf-4ce2-b22e-928b1f4fbbfe",
+      "source_log": "calcal-replies-recheck.log"
+    },
+    {
+      "name": "clarification_resume",
+      "pass": true,
+      "llm_calls": 1,
+      "run_id": "1126d795-548a-4ebe-b142-87504b08629f",
+      "source_log": "calcal-replies-recheck.log"
+    }
+  ]
+}

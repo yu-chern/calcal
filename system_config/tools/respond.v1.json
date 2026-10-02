@@ -1,0 +1,195 @@
+{
+  "name": "respond",
+  "version": "1",
+  "binding": "respond.v1",
+  "description": "正常结束本轮，回应问候、能力说明、日期/数学概念、范围提示或解释已验证结果。仅选择固定知识topics，不接受模型自由文本。program为null或与compute相同的来源绑定程序，用于概念加计算的混合问题；reference为null或服务器提供的当前会话已验证答案key。program与reference不能同时提供。单独具体日期/数值问题优先compute；真正缺少条件才clarify。",
+  "activity": "正在整理回答",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "topics": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "greeting",
+            "capabilities",
+            "thanks",
+            "farewell",
+            "scope",
+            "concept_help",
+            "leap_year",
+            "gregorian_lunar",
+            "date_difference",
+            "inclusive_dates",
+            "month_shift",
+            "timezone_dst",
+            "workdays",
+            "nearest_date",
+            "percentages",
+            "average",
+            "rounding",
+            "precision",
+            "operation_order",
+            "division_zero",
+            "units",
+            "simple_compound_interest",
+            "calculation_process"
+          ]
+        },
+        "minItems": 0,
+        "maxItems": 4
+      },
+      "program": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                      "maxLength": 32,
+                      "minLength": 1
+                    },
+                    "source": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "quote": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "number",
+                        "date",
+                        "weekday",
+                        "month",
+                        "expression",
+                        "direction",
+                        "month_rule",
+                        "numbers"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "source",
+                    "quote",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 0,
+                "maxItems": 32
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                      "maxLength": 32,
+                      "minLength": 1
+                    },
+                    "expression": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "expression"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 16
+              },
+              "outputs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "ref": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+                      "maxLength": 32,
+                      "minLength": 1
+                    },
+                    "label": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "result",
+                        "date",
+                        "days",
+                        "total",
+                        "average",
+                        "comparison"
+                      ]
+                    },
+                    "unit": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "yuan",
+                        "days",
+                        "weeks",
+                        "months",
+                        "years",
+                        "hours",
+                        "minutes",
+                        "seconds"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ref",
+                    "label",
+                    "unit"
+                  ],
+                  "additionalProperties": false
+                },
+                "minItems": 1,
+                "maxItems": 16
+              }
+            },
+            "required": [
+              "inputs",
+              "steps",
+              "outputs"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "reference": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "maxLength": 160
+      }
+    },
+    "required": [
+      "topics",
+      "program",
+      "reference"
+    ],
+    "additionalProperties": false
+  }
+}
